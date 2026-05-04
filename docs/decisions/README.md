@@ -17,3 +17,7 @@ ADRs capture the *why* behind every non-trivial choice. Each entry below links t
 | 0011 | [Test strategy: node:test + Vitest + Playwright](./0011-test-strategy.md) | accepted |
 | 0012 | [Per-package multi-stage Docker + compose](./0012-container-strategy.md) | accepted |
 | 0013 | [Hexagonal folder layout per package](./0013-hexagonal-layout.md) | accepted |
+| 0014 | [`Task` aggregate shape and invariants](./0014-task-aggregate-shape.md) | accepted |
+| 0015 | [Title normalisation — trim before validate, cap at 200 chars](./0015-title-normalisation.md) | accepted |
+| 0016 | [Determinism via ports — `Clock` and `IdGenerator`](./0016-determinism-via-ports.md) | accepted |
+| 0017 | [`Result<T, E>` and tagged-union errors over thrown exceptions](./0017-result-over-exceptions.md) | accepted |
