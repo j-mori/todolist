@@ -1,0 +1,17 @@
+# Pre-commit hook for the todolist repo.
+#
+# Installation: `npm install` runs `lefthook install` via the `prepare` script.
+# Bypassing the hook is forbidden by repo convention (see CLAUDE.md).
+# Use `git commit --no-verify` only with an explicit reason in the commit body.
+
+pre-commit:
+  parallel: true
+  commands:
+    biome:
+      glob: '*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,css}'
+      run: npx biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      stage_fixed: true
+
+# No pre-push hook on purpose. The full `npm run check` is the green-bar
+# gate but it is too slow to run on every push (it builds the FE bundle).
+# CI runs it on every pipeline; local runs are explicit.
