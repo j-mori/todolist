@@ -1,0 +1,17 @@
+**/node_modules
+**/dist
+**/build
+**/coverage
+**/.vite
+**/*.log
+**/.DS_Store
+**/.env
+**/.env.*
+.git
+.gitignore
+docs
+README.md
+CLAUDE.md
+playwright-report
+test-results
+*.tsbuildinfo

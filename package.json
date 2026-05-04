@@ -1,0 +1,30 @@
+{
+  "name": "todolist",
+  "version": "0.0.0",
+  "private": true,
+  "description": "State-of-the-art TypeScript 2026 reference app: hexagonal, multi-layer tested, fully containerised.",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0",
+    "npm": ">=11.0.0"
+  },
+  "workspaces": [
+    "packages/shared",
+    "packages/backend",
+    "packages/frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "echo 'E2E suite arrives in Session 6' && exit 0",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "check": "npm run lint && npm run typecheck && npm run test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.14",
+    "typescript": "^6.0.3"
+  }
+}
