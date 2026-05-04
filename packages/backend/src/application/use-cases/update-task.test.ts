@@ -1,32 +1,16 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
-import { Task } from '../../domain/task/task.ts';
-import { TaskId } from '../../domain/task/task-id.ts';
-import { TaskTitle } from '../../domain/task/task-title.ts';
+import { TASK_IDS, taskOf } from '../../domain/task/task.test-support.ts';
 import { createFixedClock } from '../test-support/fixed-clock.test-support.ts';
 import { createInMemoryTaskRepository } from '../test-support/in-memory-task-repository.test-support.ts';
 import { updateTask } from './update-task.ts';
 
-const VALID_ID = '550e8400-e29b-41d4-a716-446655440000';
-const id = (s: string) => {
-  const r = TaskId.from(s);
-  if (!r.ok) throw new Error('bad id');
-  return r.value;
-};
-const title = (s: string) => {
-  const r = TaskTitle.from(s);
-  if (!r.ok) throw new Error('bad title');
-  return r.value;
-};
+const VALID_ID = TASK_IDS.X;
 
 const seed = () => {
   const tasks = createInMemoryTaskRepository();
   const clock = createFixedClock(new Date('2026-05-04T11:00:00Z'));
-  const existing = Task.create({
-    id: id(VALID_ID),
-    title: title('Buy milk'),
-    now: new Date('2026-05-04T10:00:00Z'),
-  });
+  const existing = taskOf({ id: VALID_ID, title: 'Buy milk', now: '2026-05-04T10:00:00Z' });
   tasks.seed(existing);
   return { tasks, clock, existing };
 };
@@ -47,7 +31,7 @@ describe('updateTask', () => {
     const { clock } = seed();
     const empty = createInMemoryTaskRepository();
     const r = await updateTask(
-      { id: '99999999-9999-4999-8999-999999999999', title: 'whatever' },
+      { id: TASK_IDS.UNKNOWN, title: 'whatever' },
       { tasks: empty, clock },
     );
 
@@ -76,6 +60,17 @@ describe('updateTask', () => {
     if (r.ok) return;
     assert.equal(r.error.kind, 'ValidationError');
     assert.equal(r.error.field, 'title');
+    assert.equal(tasks.saveCalls.length, 0);
+  });
+
+  it('is idempotent when the new title equals the current one: returns ok, repo save not called', async () => {
+    const { tasks, clock, existing } = seed();
+    const r = await updateTask({ id: VALID_ID, title: 'Buy milk' }, { tasks, clock });
+
+    assert.equal(r.ok, true);
+    if (!r.ok) return;
+    assert.equal(r.value.title, existing.title);
+    assert.equal(r.value.updatedAt.toISOString(), existing.updatedAt.toISOString());
     assert.equal(tasks.saveCalls.length, 0);
   });
 });

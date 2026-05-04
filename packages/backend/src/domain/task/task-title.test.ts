@@ -41,8 +41,4 @@ describe('TaskTitle', () => {
     if (!r.ok) assert.match(r.error.reason, /200/);
   });
 
-  it('unsafe wraps a string verbatim for adapters reading already-validated rows', () => {
-    const t = TaskTitle.unsafe('already-trusted');
-    assert.equal(t, 'already-trusted');
-  });
 });

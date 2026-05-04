@@ -25,3 +25,4 @@ ADRs capture the *why* behind every non-trivial choice. Each entry below links t
 | 0019 | [API contract location — Zod schemas in `@todolist/shared`](./0019-shared-api-contract.md) | accepted |
 | 0020 | [Error response envelope `{ error: { kind, ... } }`](./0020-error-response-envelope.md) | accepted |
 | 0021 | [Schema initialised idempotently on boot — no migration runner (yet)](./0021-schema-init-on-boot.md) | accepted |
+| 0022 | [Production hardening — explicit configuration, required deps, security middleware](./0022-production-hardening.md) | accepted |

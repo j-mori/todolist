@@ -1,10 +1,8 @@
 import { strict as assert } from 'node:assert';
-import { setTimeout as wait } from 'node:timers/promises';
 import { test } from 'node:test';
 import { type Task, taskListSchema, taskSchema } from '@todolist/shared';
-import { jsonRequest, readJson, startApi } from './_helpers.ts';
-
-const VALID_ID = '550e8400-e29b-41d4-a716-446655440000';
+import { TASK_IDS } from '../../src/domain/task/task.test-support.ts';
+import { expectApiError, jsonRequest, readJson, startApi } from './_helpers.ts';
 
 test('POST /tasks creates a task and returns 201 with a Location header', async (t) => {
   const api = await startApi();
@@ -13,10 +11,10 @@ test('POST /tasks creates a task and returns 201 with a Location header', async 
   const res = await api.request('/tasks', jsonRequest({ title: 'Buy milk' }));
   assert.equal(res.status, 201);
   const body = await readJson<Task>(res);
-  const parsed = taskSchema.safeParse(body);
-  assert.equal(parsed.success, true, parsed.success ? '' : JSON.stringify(parsed.error.issues));
+  taskSchema.parse(body); // throws if the wire shape drifts
   assert.equal(body.title, 'Buy milk');
   assert.equal(body.status, 'pending');
+  assert.equal(body.id, api.ids.issued[0]);
   assert.equal(res.headers.get('Location'), `/tasks/${body.id}`);
 });
 
@@ -26,20 +24,18 @@ test('POST /tasks rejects whitespace-only title with 400 ValidationError(field=t
 
   const res = await api.request('/tasks', jsonRequest({ title: '   ' }));
   assert.equal(res.status, 400);
-  const body = await readJson<{ error: { kind: string; field: string } }>(res);
-  assert.equal(body.error.kind, 'ValidationError');
-  assert.equal(body.error.field, 'title');
+  const error = await expectApiError(res, 'ValidationError');
+  assert.equal(error.field, 'title');
 });
 
-test('POST /tasks rejects missing title with 400 ValidationError', async (t) => {
+test('POST /tasks rejects missing title with 400 ValidationError(field=title)', async (t) => {
   const api = await startApi();
   t.after(() => api.dispose());
 
   const res = await api.request('/tasks', jsonRequest({}));
   assert.equal(res.status, 400);
-  const body = await readJson<{ error: { kind: string; field: string } }>(res);
-  assert.equal(body.error.kind, 'ValidationError');
-  assert.equal(body.error.field, 'title');
+  const error = await expectApiError(res, 'ValidationError');
+  assert.equal(error.field, 'title');
 });
 
 test('POST /tasks rejects malformed JSON body with 400 ValidationError(field=body)', async (t) => {
@@ -52,9 +48,8 @@ test('POST /tasks rejects malformed JSON body with 400 ValidationError(field=bod
     body: 'not-json',
   });
   assert.equal(res.status, 400);
-  const body = await readJson<{ error: { kind: string; field: string } }>(res);
-  assert.equal(body.error.kind, 'ValidationError');
-  assert.equal(body.error.field, 'body');
+  const error = await expectApiError(res, 'ValidationError');
+  assert.equal(error.field, 'body');
 });
 
 test('GET /tasks returns the list in createdAt-descending order', async (t) => {
@@ -62,18 +57,17 @@ test('GET /tasks returns the list in createdAt-descending order', async (t) => {
   t.after(() => api.dispose());
 
   const a = await readJson<Task>(await api.request('/tasks', jsonRequest({ title: 'first' })));
-  await wait(5);
+  api.clock.advance(1000);
   const b = await readJson<Task>(await api.request('/tasks', jsonRequest({ title: 'second' })));
-  await wait(5);
+  api.clock.advance(1000);
   const c = await readJson<Task>(await api.request('/tasks', jsonRequest({ title: 'third' })));
 
   const res = await api.request('/tasks');
   assert.equal(res.status, 200);
   const list = await readJson<Task[]>(res);
-  const parsed = taskListSchema.safeParse(list);
-  assert.equal(parsed.success, true);
+  taskListSchema.parse(list);
   assert.deepEqual(
-    list.map((t) => t.id),
+    list.map((task) => task.id),
     [c.id, b.id, a.id],
   );
 });
@@ -83,36 +77,58 @@ test('PATCH /tasks/:id updates the title and advances updatedAt', async (t) => {
   t.after(() => api.dispose());
 
   const created = await readJson<Task>(await api.request('/tasks', jsonRequest({ title: 'old' })));
-  await wait(5);
-  const res = await api.request(`/tasks/${created.id}`, jsonRequest({ title: 'new' }, { method: 'PATCH' }));
+  api.clock.advance(60_000);
+  const res = await api.request(
+    `/tasks/${created.id}`,
+    jsonRequest({ title: 'new' }, { method: 'PATCH' }),
+  );
   assert.equal(res.status, 200);
   const updated = await readJson<Task>(res);
   assert.equal(updated.title, 'new');
   assert.equal(updated.id, created.id);
   assert.equal(updated.createdAt, created.createdAt);
-  assert.notEqual(updated.updatedAt, created.updatedAt);
+  assert.equal(updated.updatedAt, '2026-05-04T10:01:00.000Z');
+});
+
+test('PATCH /tasks/:id is idempotent when the title is unchanged: same updatedAt', async (t) => {
+  const api = await startApi();
+  t.after(() => api.dispose());
+
+  const created = await readJson<Task>(await api.request('/tasks', jsonRequest({ title: 'same' })));
+  api.clock.advance(60_000);
+  const res = await api.request(
+    `/tasks/${created.id}`,
+    jsonRequest({ title: 'same' }, { method: 'PATCH' }),
+  );
+  assert.equal(res.status, 200);
+  const noop = await readJson<Task>(res);
+  assert.equal(noop.updatedAt, created.updatedAt);
 });
 
 test('PATCH /tasks/:id with unknown id returns 404 TaskNotFound', async (t) => {
   const api = await startApi();
   t.after(() => api.dispose());
 
-  const res = await api.request(`/tasks/${VALID_ID}`, jsonRequest({ title: 'whatever' }, { method: 'PATCH' }));
+  const res = await api.request(
+    `/tasks/${TASK_IDS.X}`,
+    jsonRequest({ title: 'whatever' }, { method: 'PATCH' }),
+  );
   assert.equal(res.status, 404);
-  const body = await readJson<{ error: { kind: string; id: string } }>(res);
-  assert.equal(body.error.kind, 'TaskNotFound');
-  assert.equal(body.error.id, VALID_ID);
+  const error = await expectApiError(res, 'TaskNotFound');
+  assert.equal(error.id, TASK_IDS.X);
 });
 
 test('PATCH /tasks/:id with non-uuid id returns 400 ValidationError(field=id)', async (t) => {
   const api = await startApi();
   t.after(() => api.dispose());
 
-  const res = await api.request('/tasks/not-a-uuid', jsonRequest({ title: 'x' }, { method: 'PATCH' }));
+  const res = await api.request(
+    '/tasks/not-a-uuid',
+    jsonRequest({ title: 'x' }, { method: 'PATCH' }),
+  );
   assert.equal(res.status, 400);
-  const body = await readJson<{ error: { kind: string; field: string } }>(res);
-  assert.equal(body.error.kind, 'ValidationError');
-  assert.equal(body.error.field, 'id');
+  const error = await expectApiError(res, 'ValidationError');
+  assert.equal(error.field, 'id');
 });
 
 test('POST /tasks/:id/complete marks completed; second call is a no-op (same updatedAt)', async (t) => {
@@ -120,14 +136,14 @@ test('POST /tasks/:id/complete marks completed; second call is a no-op (same upd
   t.after(() => api.dispose());
 
   const created = await readJson<Task>(await api.request('/tasks', jsonRequest({ title: 'x' })));
-  await wait(5);
+  api.clock.advance(60_000);
   const first = await readJson<Task>(
     await api.request(`/tasks/${created.id}/complete`, { method: 'POST' }),
   );
   assert.equal(first.status, 'completed');
-  assert.notEqual(first.updatedAt, created.updatedAt);
+  assert.equal(first.updatedAt, '2026-05-04T10:01:00.000Z');
 
-  await wait(5);
+  api.clock.advance(60_000);
   const res = await api.request(`/tasks/${created.id}/complete`, { method: 'POST' });
   assert.equal(res.status, 200);
   const second = await readJson<Task>(res);
@@ -141,14 +157,14 @@ test('POST /tasks/:id/reopen flips completed back to pending; idempotent on alre
 
   const created = await readJson<Task>(await api.request('/tasks', jsonRequest({ title: 'x' })));
   await api.request(`/tasks/${created.id}/complete`, { method: 'POST' });
-  await wait(5);
+  api.clock.advance(60_000);
 
   const reopened = await readJson<Task>(
     await api.request(`/tasks/${created.id}/reopen`, { method: 'POST' }),
   );
   assert.equal(reopened.status, 'pending');
 
-  await wait(5);
+  api.clock.advance(60_000);
   const idempotent = await readJson<Task>(
     await api.request(`/tasks/${created.id}/reopen`, { method: 'POST' }),
   );
@@ -173,21 +189,22 @@ test('DELETE /tasks/:id with unknown id returns 404 TaskNotFound', async (t) => 
   const api = await startApi();
   t.after(() => api.dispose());
 
-  const res = await api.request(`/tasks/${VALID_ID}`, { method: 'DELETE' });
+  const res = await api.request(`/tasks/${TASK_IDS.X}`, { method: 'DELETE' });
   assert.equal(res.status, 404);
+  await expectApiError(res, 'TaskNotFound');
 });
 
 test('state survives across calls within a single composed app (real SQLite round-trip)', async (t) => {
   const api = await startApi();
   t.after(() => api.dispose());
 
-  const created = await readJson<Task>(await api.request('/tasks', jsonRequest({ title: 'persisted' })));
-  // intervening calls
-  await api.request('/health');
+  const created = await readJson<Task>(
+    await api.request('/tasks', jsonRequest({ title: 'persisted' })),
+  );
+  await api.request('/healthz');
   await api.request('/tasks');
 
-  const res = await api.request('/tasks');
-  const list = await readJson<Task[]>(res);
+  const list = await readJson<Task[]>(await api.request('/tasks'));
   assert.equal(list.length, 1);
   assert.equal(list[0]?.id, created.id);
 });

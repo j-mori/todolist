@@ -1,20 +1,9 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
-import { TaskId } from './task-id.ts';
-import { TaskTitle } from './task-title.ts';
 import { Task } from './task.ts';
+import { idOf, TASK_IDS, titleOf } from './task.test-support.ts';
 
-const ID = '550e8400-e29b-41d4-a716-446655440000';
-const idOf = (s: string) => {
-  const r = TaskId.from(s);
-  if (!r.ok) throw new Error('test fixture id invalid');
-  return r.value;
-};
-const titleOf = (s: string) => {
-  const r = TaskTitle.from(s);
-  if (!r.ok) throw new Error('test fixture title invalid');
-  return r.value;
-};
+const ID = TASK_IDS.X;
 
 describe('Task', () => {
   it('create produces a pending task with the supplied id, title, and timestamps', () => {
@@ -76,5 +65,43 @@ describe('Task', () => {
 
     assert.equal(again, t0);
     assert.equal(again.updatedAt.toISOString(), '2026-05-04T10:00:00.000Z');
+  });
+
+  it('withTitle is idempotent when the new title equals the current one (same instance, updatedAt unchanged)', () => {
+    const t0 = Task.create({ id: idOf(ID), title: titleOf('Buy milk'), now: new Date('2026-05-04T10:00:00Z') });
+    const sameTitle = titleOf('Buy milk');
+    const again = t0.withTitle(sameTitle, new Date('2026-05-04T11:00:00Z'));
+
+    assert.equal(again, t0);
+    assert.equal(again.updatedAt.toISOString(), '2026-05-04T10:00:00.000Z');
+  });
+
+  it('restore reconstructs a Task with all fields preserved without revalidation', () => {
+    const restored = Task.restore({
+      id: ID,
+      title: 'persisted',
+      status: 'completed',
+      createdAt: new Date('2026-05-01T08:00:00Z'),
+      updatedAt: new Date('2026-05-04T09:30:00Z'),
+    });
+
+    assert.equal(restored.id, ID);
+    assert.equal(restored.title, 'persisted');
+    assert.equal(restored.status, 'completed');
+    assert.equal(restored.createdAt.toISOString(), '2026-05-01T08:00:00.000Z');
+    assert.equal(restored.updatedAt.toISOString(), '2026-05-04T09:30:00.000Z');
+  });
+
+  it('restore yields a Task whose behaviour is indistinguishable from one built via create', () => {
+    const restored = Task.restore({
+      id: ID,
+      title: 'x',
+      status: 'pending',
+      createdAt: new Date('2026-05-01T00:00:00Z'),
+      updatedAt: new Date('2026-05-01T00:00:00Z'),
+    });
+    const completed = restored.complete(new Date('2026-05-04T12:00:00Z'));
+    assert.equal(completed.status, 'completed');
+    assert.equal(completed.updatedAt.toISOString(), '2026-05-04T12:00:00.000Z');
   });
 });

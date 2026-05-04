@@ -1,6 +1,6 @@
-import type { TaskId } from './task-id.ts';
+import { __unsafeTaskId, type TaskId } from './task-id.ts';
 import type { TaskStatus } from './task-status.ts';
-import type { TaskTitle } from './task-title.ts';
+import { __unsafeTaskTitle, type TaskTitle } from './task-title.ts';
 
 export type Task = {
   readonly id: TaskId;
@@ -19,6 +19,7 @@ const make = (fields: TaskFields): Task => {
   const self: Task = {
     ...fields,
     withTitle(title, now) {
+      if (title === fields.title) return self;
       return make({ ...fields, title, updatedAt: now });
     },
     complete(now) {
@@ -42,6 +43,28 @@ const create = (input: { id: TaskId; title: TaskTitle; now: Date }): Task =>
     updatedAt: input.now,
   });
 
-const restore = (fields: TaskFields): Task => make(fields);
+/**
+ * Reconstruct a {@link Task} from a trusted row (typically the persistence
+ * adapter reading data it wrote earlier).
+ *
+ * This bypasses the value-object smart constructors — the caller is asserting
+ * that the `id` and `title` are already well-formed. Production callers are
+ * limited to the persistence adapter and the SQLite-backed `IdGenerator`. Any
+ * other call site must justify the assertion.
+ */
+const restore = (raw: {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  createdAt: Date;
+  updatedAt: Date;
+}): Task =>
+  make({
+    id: __unsafeTaskId(raw.id),
+    title: __unsafeTaskTitle(raw.title),
+    status: raw.status,
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
+  });
 
 export const Task = { create, restore };

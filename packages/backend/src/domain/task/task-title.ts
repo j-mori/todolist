@@ -1,14 +1,13 @@
+import { TASK_TITLE_MAX_LENGTH, TASK_TITLE_MIN_LENGTH } from '@todolist/shared';
 import { err, ok, type Result } from '../shared/result.ts';
 import { validationError, type ValidationError } from './errors.ts';
 
 declare const taskTitleBrand: unique symbol;
 export type TaskTitle = string & { readonly [taskTitleBrand]: never };
 
-export const TASK_TITLE_MAX_LENGTH = 200;
-
 const from = (input: string): Result<TaskTitle, ValidationError> => {
   const trimmed = input.trim();
-  if (trimmed.length === 0) {
+  if (trimmed.length < TASK_TITLE_MIN_LENGTH) {
     return err(validationError('title', 'must not be empty'));
   }
   if (trimmed.length > TASK_TITLE_MAX_LENGTH) {
@@ -17,6 +16,13 @@ const from = (input: string): Result<TaskTitle, ValidationError> => {
   return ok(trimmed as TaskTitle);
 };
 
-const unsafe = (input: string): TaskTitle => input as TaskTitle;
+export const TaskTitle = { from };
 
-export const TaskTitle = { from, unsafe };
+/**
+ * Internal: brand a string as a {@link TaskTitle} without revalidating.
+ *
+ * Reserved for the persistence boundary, which reads rows that were validated
+ * on the way in. Not exported from the package — `Task.restore` is the only
+ * public consumer.
+ */
+export const __unsafeTaskTitle = (input: string): TaskTitle => input as TaskTitle;

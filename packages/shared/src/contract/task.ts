@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+/**
+ * Wire-level constraints. These are the single source of truth across BE and FE.
+ * The domain `TaskTitle` value object imports them to stay in lockstep.
+ */
 export const TASK_TITLE_MIN_LENGTH = 1;
 export const TASK_TITLE_MAX_LENGTH = 200;
 

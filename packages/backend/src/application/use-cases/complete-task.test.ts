@@ -1,35 +1,17 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
-import { Task } from '../../domain/task/task.ts';
-import { TaskId } from '../../domain/task/task-id.ts';
-import { TaskTitle } from '../../domain/task/task-title.ts';
+import { TASK_IDS, taskOf } from '../../domain/task/task.test-support.ts';
 import { createFixedClock } from '../test-support/fixed-clock.test-support.ts';
 import { createInMemoryTaskRepository } from '../test-support/in-memory-task-repository.test-support.ts';
 import { completeTask } from './complete-task.ts';
 
-const VALID_ID = '550e8400-e29b-41d4-a716-446655440000';
-const id = (s: string) => {
-  const r = TaskId.from(s);
-  if (!r.ok) throw new Error('bad id');
-  return r.value;
-};
-const title = (s: string) => {
-  const r = TaskTitle.from(s);
-  if (!r.ok) throw new Error('bad title');
-  return r.value;
-};
+const VALID_ID = TASK_IDS.X;
 
 describe('completeTask', () => {
   it('marks a pending task as completed and saves it', async () => {
     const tasks = createInMemoryTaskRepository();
     const clock = createFixedClock(new Date('2026-05-04T11:00:00Z'));
-    tasks.seed(
-      Task.create({
-        id: id(VALID_ID),
-        title: title('x'),
-        now: new Date('2026-05-04T10:00:00Z'),
-      }),
-    );
+    tasks.seed(taskOf({ id: VALID_ID, title: 'x', now: '2026-05-04T10:00:00Z' }));
 
     const r = await completeTask({ id: VALID_ID }, { tasks, clock });
 
@@ -43,11 +25,7 @@ describe('completeTask', () => {
   it('is idempotent on an already-completed task: returns ok and does not write to the repo', async () => {
     const tasks = createInMemoryTaskRepository();
     const clock = createFixedClock(new Date('2026-05-04T12:00:00Z'));
-    const t0 = Task.create({
-      id: id(VALID_ID),
-      title: title('x'),
-      now: new Date('2026-05-04T10:00:00Z'),
-    });
+    const t0 = taskOf({ id: VALID_ID, title: 'x', now: '2026-05-04T10:00:00Z' });
     tasks.seed(t0.complete(new Date('2026-05-04T11:00:00Z')));
 
     const r = await completeTask({ id: VALID_ID }, { tasks, clock });

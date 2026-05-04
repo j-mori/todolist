@@ -1,29 +1,48 @@
+import { promisify } from 'node:util';
 import { serve } from '@hono/node-server';
 import { pino } from 'pino';
-import { compose } from './main.ts';
+import { loadConfig } from './config.ts';
+import { composeProduction } from './main.ts';
 
-const log = pino({ name: 'todolist-backend' });
-const port = Number.parseInt(process.env.PORT ?? '3000', 10);
-const databasePath = process.env.DATABASE_PATH ?? '/data/todolist.db';
-const corsOrigin = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim())
-  : undefined;
+const config = loadConfig(process.env);
 
-const { app, dispose } = await compose({
-  databasePath,
-  logger: log,
-  ...(corsOrigin !== undefined ? { corsOrigin } : {}),
+const logger = pino({
+  name: 'todolist-backend',
+  level: config.logLevel,
+  redact: {
+    // Defensive defaults: even though no payload currently carries these,
+    // guard against accidental leaks from a future field.
+    paths: ['*.password', '*.token', '*.authorization', 'req.headers.authorization'],
+    censor: '[redacted]',
+  },
 });
 
-const server = serve({ fetch: app.fetch, port }, (info) => {
-  log.info({ port: info.port, databasePath }, 'backend listening');
+const composed = await composeProduction({
+  databasePath: config.databasePath,
+  logger,
+  corsOrigin: config.corsOrigin,
+  maxBodyBytes: config.maxBodyBytes,
 });
+
+const server = serve({ fetch: composed.app.fetch, port: config.port }, (info) => {
+  logger.info(
+    { port: info.port, databasePath: config.databasePath, env: config.nodeEnv },
+    'backend listening',
+  );
+});
+
+const closeServer = promisify(server.close.bind(server));
 
 const shutdown = async (signal: string): Promise<void> => {
-  log.info({ signal }, 'shutting down');
-  server.close();
-  await dispose();
-  process.exit(0);
+  logger.info({ signal }, 'shutting down');
+  try {
+    await closeServer();
+    await composed.dispose();
+    process.exit(0);
+  } catch (err) {
+    logger.error({ err }, 'shutdown_failed');
+    process.exit(1);
+  }
 };
 
 process.on('SIGINT', () => {
@@ -31,4 +50,13 @@ process.on('SIGINT', () => {
 });
 process.on('SIGTERM', () => {
   void shutdown('SIGTERM');
+});
+
+process.on('uncaughtException', (err) => {
+  logger.fatal({ err }, 'uncaught_exception');
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason) => {
+  logger.fatal({ reason }, 'unhandled_rejection');
+  process.exit(1);
 });

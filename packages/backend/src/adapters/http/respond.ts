@@ -1,17 +1,9 @@
 import type { Context } from 'hono';
-import type { ContentfulStatusCode, StatusCode } from 'hono/utils/http-status';
-import type { ApiError, Task as ApiTask, ErrorResponse } from '@todolist/shared';
+import type { ApiError, ErrorResponse } from '@todolist/shared';
 import type { Result } from '../../domain/shared/result.ts';
-import type { DomainError } from '../../domain/task/errors.ts';
+import type { DomainError, ValidationError } from '../../domain/task/errors.ts';
 import type { Task } from '../../domain/task/task.ts';
-
-export const taskToWire = (task: Task): ApiTask => ({
-  id: task.id,
-  title: task.title,
-  status: task.status,
-  createdAt: task.createdAt.toISOString(),
-  updatedAt: task.updatedAt.toISOString(),
-});
+import { taskToWire } from './wire.ts';
 
 const errorToBody = (error: DomainError): ErrorResponse => {
   const apiError: ApiError =
@@ -21,36 +13,19 @@ const errorToBody = (error: DomainError): ErrorResponse => {
   return { error: apiError };
 };
 
-const statusFor = (error: DomainError): ContentfulStatusCode =>
-  error.kind === 'ValidationError' ? 400 : 404;
-
-export const respondWithTask = (
-  c: Context,
-  result: Result<Task, DomainError>,
-  successStatus: ContentfulStatusCode = 200,
-): Response => {
-  if (result.ok) {
-    return c.json(taskToWire(result.value), successStatus);
-  }
-  return c.json(errorToBody(result.error), statusFor(result.error));
+const respondError = (c: Context, error: DomainError): Response => {
+  const status = error.kind === 'ValidationError' ? 400 : 404;
+  return c.json(errorToBody(error), status);
 };
 
-export const respondWithVoid = (
-  c: Context,
-  result: Result<void, DomainError>,
-  successStatus: StatusCode = 204,
-): Response => {
-  if (result.ok) {
-    return c.body(null, successStatus);
-  }
-  return c.json(errorToBody(result.error), statusFor(result.error));
-};
+export const respondOk = (c: Context, result: Result<Task, DomainError>): Response =>
+  result.ok ? c.json(taskToWire(result.value), 200) : respondError(c, result.error);
 
-export const respondWithValidationError = (
-  c: Context,
-  field: string,
-  reason: string,
-): Response => {
-  const body: ErrorResponse = { error: { kind: 'ValidationError', field, reason } };
-  return c.json(body, 400);
-};
+export const respondCreated = (c: Context, result: Result<Task, DomainError>): Response =>
+  result.ok ? c.json(taskToWire(result.value), 201) : respondError(c, result.error);
+
+export const respondNoContent = (c: Context, result: Result<void, DomainError>): Response =>
+  result.ok ? c.body(null, 204) : respondError(c, result.error);
+
+export const respondValidationError = (c: Context, error: ValidationError): Response =>
+  c.json(errorToBody(error), 400);

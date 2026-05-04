@@ -1,9 +1,9 @@
-import { err, ok, type Result } from '../../domain/shared/result.ts';
-import { taskNotFound, type TaskNotFound, type ValidationError } from '../../domain/task/errors.ts';
+import { ok, type Result } from '../../domain/shared/result.ts';
+import type { TaskNotFound, ValidationError } from '../../domain/task/errors.ts';
 import type { Task } from '../../domain/task/task.ts';
-import { TaskId } from '../../domain/task/task-id.ts';
 import type { Clock } from '../ports/clock.ts';
 import type { TaskRepository } from '../ports/task-repository.ts';
+import { loadTaskById } from './_load-task.ts';
 
 export type CompleteTaskInput = { id: string };
 export type CompleteTaskDeps = { tasks: TaskRepository; clock: Clock };
@@ -13,14 +13,11 @@ export const completeTask = async (
   input: CompleteTaskInput,
   deps: CompleteTaskDeps,
 ): Promise<Result<Task, CompleteTaskError>> => {
-  const id = TaskId.from(input.id);
-  if (!id.ok) return err(id.error);
+  const existing = await loadTaskById(input.id, deps.tasks);
+  if (!existing.ok) return existing;
 
-  const existing = await deps.tasks.findById(id.value);
-  if (existing === null) return err(taskNotFound(input.id));
-
-  const completed = existing.complete(deps.clock.now());
-  if (completed !== existing) {
+  const completed = existing.value.complete(deps.clock.now());
+  if (completed !== existing.value) {
     await deps.tasks.save(completed);
   }
   return ok(completed);

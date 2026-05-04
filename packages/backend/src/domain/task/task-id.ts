@@ -15,6 +15,13 @@ const from = (input: string): Result<TaskId, ValidationError> => {
   return ok(parsed.data as TaskId);
 };
 
-const unsafe = (input: string): TaskId => input as TaskId;
+export const TaskId = { from };
 
-export const TaskId = { from, unsafe };
+/**
+ * Internal: brand a string as a {@link TaskId} without revalidating.
+ *
+ * Reserved for `Task.restore` (persistence read path) and the production
+ * `IdGenerator` (which sources from `crypto.randomUUID()`, already a UUID v4
+ * by construction). Not exported from the package.
+ */
+export const __unsafeTaskId = (input: string): TaskId => input as TaskId;

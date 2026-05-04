@@ -61,6 +61,14 @@ docs/
 | `npm run test` | `node:test` (BE: unit + integration) + Vitest (FE) |
 | `npm run test:integration --workspace @todolist/backend` | BE integration suite only (`test/integration/**`) |
 | `npm run test:e2e` | Playwright (real suite arrives in Session 6) |
+
+### Backend configuration
+
+`packages/backend/src/index.ts` calls `loadConfig(process.env)` (see `src/config.ts`) and refuses to start if any required variable is missing. Required: `PORT`, `DATABASE_PATH`, `CORS_ORIGIN`. Optional: `MAX_BODY_BYTES`, `LOG_LEVEL`, `NODE_ENV`. See `.env.example` at the repo root for the canonical list. Defaults live there, not in code (see ADR-0022).
+
+Composition has two entry points (`packages/backend/src/main.ts`):
+- `composeProduction(opts)` — opens SQLite, initialises the schema, defaults clock+ids to production implementations.
+- `compose(deps)` — pure dependency injection; takes every port. Use from tests with whatever fakes you need.
 | `npm run lint` | `biome lint .` |
 | `npm run format` | `biome format --write .` |
 | `npm run typecheck` | `tsc --noEmit` per workspace |

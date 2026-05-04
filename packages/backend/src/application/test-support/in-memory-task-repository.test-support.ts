@@ -9,6 +9,9 @@ export type InMemoryTaskRepository = TaskRepository & {
   contents(): Task[];
 };
 
+const sortByCreatedAtDesc = (tasks: Task[]): Task[] =>
+  [...tasks].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
 export const createInMemoryTaskRepository = (): InMemoryTaskRepository => {
   const store = new Map<TaskId, Task>();
   const saveCalls: Task[] = [];
@@ -25,7 +28,7 @@ export const createInMemoryTaskRepository = (): InMemoryTaskRepository => {
       return store.get(id) ?? null;
     },
     async list() {
-      return [...store.values()];
+      return sortByCreatedAtDesc([...store.values()]);
     },
     async delete(id) {
       deleteCalls.push(id);

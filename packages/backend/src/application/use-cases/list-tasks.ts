@@ -3,7 +3,8 @@ import type { TaskRepository } from '../ports/task-repository.ts';
 
 export type ListTasksDeps = { tasks: TaskRepository };
 
-export const listTasks = async (deps: ListTasksDeps): Promise<Task[]> => {
-  const all = await deps.tasks.list();
-  return [...all].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-};
+/**
+ * Returns all tasks. Ordering (createdAt desc) is part of the
+ * {@link TaskRepository} port contract; the use case just delegates.
+ */
+export const listTasks = async (deps: ListTasksDeps): Promise<Task[]> => deps.tasks.list();

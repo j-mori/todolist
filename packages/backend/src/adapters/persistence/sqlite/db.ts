@@ -14,23 +14,22 @@ export type TaskDb = {
   tasks: TasksRow;
 };
 
-const isReaderSql = (sql: string): boolean => {
-  const head = sql.trimStart().toUpperCase();
-  return (
-    head.startsWith('SELECT') ||
-    head.startsWith('PRAGMA') ||
-    head.startsWith('EXPLAIN') ||
-    head.startsWith('WITH') ||
-    /\bRETURNING\b/.test(head)
-  );
-};
+const IN_MEMORY_PATH = ':memory:';
 
+/**
+ * Adapt a node:sqlite `DatabaseSync` to the better-sqlite3-shaped interface
+ * Kysely's built-in `SqliteDialect` expects.
+ *
+ * `reader` is derived from prepared-statement metadata (`columns().length > 0`)
+ * rather than parsing SQL — robust against CTEs, RETURNING clauses, and any
+ * future query Kysely emits.
+ */
 const wrapNodeSqlite = (db: DatabaseSync): SqliteDatabase => ({
   close: () => db.close(),
   prepare: (sql: string): SqliteStatement => {
     const stmt = db.prepare(sql);
     return {
-      reader: isReaderSql(sql),
+      reader: stmt.columns().length > 0,
       all: (params) => stmt.all(...(params as readonly SQLInputValue[])) as unknown[],
       run: (params) => {
         const r = stmt.run(...(params as readonly SQLInputValue[]));
@@ -45,16 +44,22 @@ const wrapNodeSqlite = (db: DatabaseSync): SqliteDatabase => ({
 
 export type DatabaseHandle = {
   kysely: Kysely<TaskDb>;
-  close(): void;
 };
 
-export const openDatabase = (path: string): DatabaseHandle => {
+export type OpenDatabaseOptions = {
+  path: string;
+};
+
+export const openDatabase = ({ path }: OpenDatabaseOptions): DatabaseHandle => {
   const sqlite = new DatabaseSync(path);
-  sqlite.exec('PRAGMA journal_mode = WAL;');
+  // WAL is meaningful only on file-backed databases; :memory: rejects it silently
+  // but issuing it is cosmetic noise.
+  if (path !== IN_MEMORY_PATH) {
+    sqlite.exec('PRAGMA journal_mode = WAL;');
+  }
   sqlite.exec('PRAGMA foreign_keys = ON;');
-  const kysely = new Kysely<TaskDb>({ dialect: new SqliteDialect({ database: wrapNodeSqlite(sqlite) }) });
-  return {
-    kysely,
-    close: () => sqlite.close(),
-  };
+  const kysely = new Kysely<TaskDb>({
+    dialect: new SqliteDialect({ database: wrapNodeSqlite(sqlite) }),
+  });
+  return { kysely };
 };
