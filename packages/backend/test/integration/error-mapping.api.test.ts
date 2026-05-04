@@ -54,7 +54,7 @@ test('uncaught errors from a use case map to 500 with the InternalError envelope
   assert.equal(res.headers.get('X-Request-Id'), error.requestId);
 });
 
-test('413 with ValidationError envelope when Content-Length exceeds the limit', async (t) => {
+test('413 with ValidationError envelope when Content-Length exceeds the limit', async () => {
   const composed = compose({
     tasks: {
       async save() {},
@@ -72,7 +72,6 @@ test('413 with ValidationError envelope when Content-Length exceeds the limit', 
     corsOrigin: '*',
     maxBodyBytes: 16,
   });
-  t.after(() => composed.dispose());
 
   const big = JSON.stringify({ title: 'x'.repeat(200) });
   const res = await composed.app.request('/tasks', {

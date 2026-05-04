@@ -19,9 +19,13 @@ A new `src/config.ts` exports `loadConfig(env: NodeJS.ProcessEnv): Config`. It v
 
 Previously, `createApp({ logger?, corsOrigin? })` silently fabricated a silent pino logger and defaulted CORS to `http://localhost:8081`. Both implied a contract the rest of the stack didn't know about. Both are now required. The single point that *can* fall back is the entrypoint, which sources defaults from `Config`. Tests pass real (silenced) loggers; integration helpers compose with `:memory:` SQLite and a deterministic `FixedClock` + `SequentialIdGenerator`.
 
-**Two compose flavours: `compose` (dependency-injected) and `composeProduction` (production wiring).**
+**Single composition root: `compose(deps)`.**
 
-`compose(deps)` takes every port plus a `dispose` callback. It owns no construction logic. `composeProduction(opts)` is the standard wiring — opens SQLite, initialises the schema, mounts the SQLite repo, defaults clock+ids to production implementations — and ultimately delegates to `compose`. Tests can call either; the integration suite uses `composeProduction({ databasePath: ':memory:' })` to exercise the full real-adapter stack.
+`compose(deps)` is the only composition function. It takes every port and returns the wired app — no defaults, no construction logic.
+
+A small adapter helper, `openWiredDatabase(path)`, encapsulates the SQLite-specific work (open the handle, run `initSchema`, build the `TaskRepository`, expose a readiness probe and a `dispose`). Both the production entrypoint (`index.ts`) and the integration test helper call `openWiredDatabase` and pass its `repo` + `readiness` into `compose`. The "production defaults" — `productionClock`, `productionIdGenerator` — are exported constants the entrypoint passes explicitly; tests pass `FixedClock` and `SequentialIdGenerator` instead.
+
+This is the standard composition-root pattern (Seemann) with the production wiring inlined into the entrypoint rather than wrapped in a second factory. One concept, two call sites.
 
 **Use cases share validated-id loading via `loadTaskById`.**
 

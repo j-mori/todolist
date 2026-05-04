@@ -66,9 +66,7 @@ docs/
 
 `packages/backend/src/index.ts` calls `loadConfig(process.env)` (see `src/config.ts`) and refuses to start if any required variable is missing. Required: `PORT`, `DATABASE_PATH`, `CORS_ORIGIN`. Optional: `MAX_BODY_BYTES`, `LOG_LEVEL`, `NODE_ENV`. See `.env.example` at the repo root for the canonical list. Defaults live there, not in code (see ADR-0022).
 
-Composition has two entry points (`packages/backend/src/main.ts`):
-- `composeProduction(opts)` — opens SQLite, initialises the schema, defaults clock+ids to production implementations.
-- `compose(deps)` — pure dependency injection; takes every port. Use from tests with whatever fakes you need.
+Composition root is `compose(deps)` in `packages/backend/src/main.ts` — pure dependency injection, takes every port. The entrypoint (`index.ts`) and the integration test helper both call it directly. SQLite wiring is encapsulated in `adapters/persistence/sqlite/wiring.ts:openWiredDatabase(path)` so both call sites share it.
 | `npm run lint` | `biome lint .` |
 | `npm run format` | `biome format --write .` |
 | `npm run typecheck` | `tsc --noEmit` per workspace |
