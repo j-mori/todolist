@@ -72,8 +72,8 @@ docs/
 | `npm install` | Install all workspace deps |
 | `npm run dev` | Run BE + FE dev servers in parallel |
 | `npm run build` | tsc + vite build per workspace |
-| `npm run test` | `node:test` (BE: 80 unit + integration) + Vitest (FE: 23) — green-bar gate |
-| `npm run test:integration --workspace @todolist/backend` | BE integration suite only (`test/integration/**`) |
+| `npm run test` | `node:test` (BE: 82 unit + integration) + Vitest (FE: 23) — green-bar gate |
+| `npm run test:integration` | BE integration suite only (`packages/backend/test/integration/**`) |
 | `npm run test:e2e` | Playwright E2E (10 specs against the docker-composed stack — see ADR-0030) |
 | `npm run test:e2e:ui` / `:report` / `:headed` | Playwright UI mode / HTML report / headed run (delegate to the e2e workspace) |
 
@@ -85,7 +85,9 @@ Composition root is `compose(deps)` in `packages/backend/src/main.ts` — pure d
 | `npm run lint` | `biome lint .` |
 | `npm run format` | `biome format --write .` |
 | `npm run typecheck` | `tsc --noEmit` per workspace |
-| `npm run check` | lint + typecheck + test (the green-bar gate) |
+| `npm run check:layers` | `dependency-cruiser` enforces the hex-layer import rules (ADR-0032) |
+| `npm run check:bundle-size` | builds the FE and asserts JS ≤ 110 kB / CSS ≤ 8 kB gzipped (ADR-0029) |
+| `npm run check` | lint + typecheck + layers + test + bundle-size (the green-bar gate) |
 | `docker compose up --build` | Boot the full stack |
 
 Stack ports: BE on `:3000`, FE on `:8081` (Docker) or `:5173` (Vite dev). 8080 is taken by Docker Desktop on the dev machine.
@@ -99,7 +101,7 @@ The FE always talks to the API at the relative path `/api/...`. In dev, Vite's `
 - `adapters/` import `application/` ports + `domain/` types. Never the other way.
 - `main.ts` is the *only* file allowed to wire concrete adapters into ports.
 
-Lint enforcement of these boundaries is a **known gap** — Biome v2 has no first-class `no-restricted-imports`-across-folders rule. Revisit in Session 7 (Biome plugin or `dependency-cruiser` companion). Until then: review discipline.
+Layer rules are enforced mechanically by `npm run check:layers` (`dependency-cruiser`, ADR-0032). The same config also forbids importing `__unsafe*` symbols outside `domain/task/` (ADR-0022 follow-up).
 
 ## Testing
 
@@ -124,11 +126,13 @@ If a test passes after deleting its target behaviour, the test is wrong. If a te
 
 ## Pointers
 
-- Master plan: `/Users/jacopo.mori/Sites/obsidian/claude/todolist/00-master-plan.md`
-- Session roadmap: `/Users/jacopo.mori/Sites/obsidian/claude/todolist/01-session-roadmap.md`
-- Latest handoff: `/Users/jacopo.mori/Sites/obsidian/claude/todolist/handoffs/`
+- Architecture (standalone, public): [`docs/architecture.md`](docs/architecture.md)
+- Testing (per-layer scope): [`docs/testing.md`](docs/testing.md)
 - ADR index: [`docs/decisions/README.md`](docs/decisions/README.md)
 - Session plans (kept after approval): [`docs/sessions/`](docs/sessions/)
+- CI: [`.gitlab-ci.yml`](.gitlab-ci.yml) (ADR-0031)
+- Pre-commit hook: [`lefthook.yml`](lefthook.yml) (ADR-0033)
+- Master plan + handoffs (author-local, not portable): `~/Sites/obsidian/claude/todolist/`
 
 ## Token tips for future Claude sessions
 

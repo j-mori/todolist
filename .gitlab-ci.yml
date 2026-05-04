@@ -1,0 +1,124 @@
+# GitLab CI for the todolist reference app.
+#
+# Two-stage gate by cost:
+#   check  — lint, typecheck, layers, unit + integration tests, bundle budget.
+#            Cheap (~30s warm), Docker-free, runs on Node 24 alpine.
+#   build  — produce the production bundles. Artifacts feed bundle + e2e.
+#   e2e    — Playwright against the docker-composed stack. Slowest;
+#            only runs after every cheap job is green.
+#
+# Documented in ADR-0031.
+
+stages:
+  - check
+  - build
+  - e2e
+
+variables:
+  NPM_CONFIG_FUND: 'false'
+  NPM_CONFIG_AUDIT: 'false'
+  npm_config_cache: '$CI_PROJECT_DIR/.npm'
+
+default:
+  image: node:24-alpine
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+      - node_modules/
+      - packages/*/node_modules/
+  before_script:
+    - npm ci --prefer-offline --no-audit --no-fund
+
+# ---------- check stage ----------
+
+lint:
+  stage: check
+  script:
+    - npm run lint
+
+typecheck:
+  stage: check
+  script:
+    - npm run typecheck
+
+layers:
+  stage: check
+  script:
+    - npm run check:layers
+
+test:
+  stage: check
+  script:
+    - npm run test
+  # 80 BE + 23 FE + 2 hardening tests = 105 (post-S7 BE-CSP additions).
+  # node:test surfaces failures in stdout; let CI fail naturally.
+
+# ---------- build stage ----------
+
+build:
+  stage: build
+  needs: [lint, typecheck, layers, test]
+  script:
+    - npm run build
+  artifacts:
+    name: 'build-$CI_COMMIT_SHORT_SHA'
+    paths:
+      - packages/frontend/dist/
+      - packages/backend/dist/
+    expire_in: 7 days
+
+bundle-size:
+  stage: build
+  needs: [build]
+  script:
+    # The script rebuilds, but caching the build artifacts above keeps
+    # this fast. We re-run it deliberately so the budget gate is
+    # a single command anyone can copy-paste locally.
+    - npm run check:bundle-size
+
+# ---------- e2e stage ----------
+
+e2e:
+  stage: e2e
+  needs: [build]
+  image: mcr.microsoft.com/playwright:v1.51.0-jammy
+  services:
+    - name: docker:25-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ''
+    DOCKER_DRIVER: overlay2
+  cache:
+    - key:
+        files:
+          - package-lock.json
+      paths:
+        - .npm/
+        - node_modules/
+        - packages/*/node_modules/
+    - key: 'playwright-$CI_COMMIT_REF_SLUG'
+      paths:
+        - .cache/ms-playwright/
+  variables:
+    PLAYWRIGHT_BROWSERS_PATH: '$CI_PROJECT_DIR/.cache/ms-playwright'
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq docker.io docker-compose-plugin
+    - npm ci --prefer-offline --no-audit --no-fund
+    - npx playwright install --with-deps chromium
+  script:
+    - npm run test:e2e
+  artifacts:
+    when: on_failure
+    paths:
+      - packages/e2e/playwright-report/
+      - packages/e2e/test-results/
+    expire_in: 7 days
+
+# Tip for future maintainers: the e2e job exercises the cold-boot path of
+# packages/e2e/playwright/global-setup.ts (docker compose up -d --wait
+# --build), which the local sessions skipped. If first-run boot grows
+# fragile, add a sanity assertion in global-setup before the test loop.

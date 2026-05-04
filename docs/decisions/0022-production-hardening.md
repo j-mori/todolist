@@ -84,3 +84,11 @@ Plus a `task-row.test.ts` for the persistence boundary mapping, a `Task.restore`
 - **Defaults stay in code, a doc explains them** — rejected: defaults in code make `node index.js` "work" on the wrong machine; the brief asks for production-ready, which means failing fast on misconfiguration.
 - **Single `compose(opts)` with everything optional** — rejected: would force every test to opt out of production wiring it doesn't want; the split makes intent explicit.
 - **Keep the `unsafe` exports, document they're internal** — rejected: docs don't enforce; the underscore-prefixed module-level symbol is the convention this codebase already uses for "do not import from outside".
+
+## Addendum (2026-05-05, S7)
+
+Two follow-ups from this ADR have landed in the meantime:
+
+- **`compose` is now a single function.** The "Two compose entry points" trade-off described in *Consequences* was collapsed in commit `17bb95b refactor(backend): collapse composeProduction into compose + openWiredDatabase`. `compose(deps)` is the only composition function; `openWiredDatabase(path)` encapsulates SQLite-specific wiring; `productionClock` and `productionIdGenerator` are exported constants the entrypoint passes explicitly. Tests pass `FixedClock` + `SequentialIdGenerator` instead.
+- **`__unsafe*` ban is now mechanical.** The "linter or `dependency-cruiser` rule preventing imports of `__unsafeTaskId` / `__unsafeTaskTitle` outside `domain/task/`" follow-up is wired via `dependency-cruiser` (ADR-0032). Layer-direction rules ride alongside it.
+- **API CSP is now defensive.** `secureHeaders` is configured with `default-src 'none'; frame-ancestors 'none'`; the integration suite pins both that header and the absence of `X-Powered-By` (`packages/backend/test/integration/security-headers.api.test.ts`).
