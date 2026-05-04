@@ -26,16 +26,18 @@ State-of-the-art TypeScript 2026 reference app: production-ready, hexagonal, mul
 
 ```
 packages/
-  shared/        # API contract (Zod schemas + inferred types). No business logic.
+  shared/        # API contract (Zod schemas + inferred types) under src/contract/. No business logic. (ADR-0019)
   backend/
     src/
       domain/         # pure: entities, value objects, errors
       application/    # use cases + ports
       adapters/
-        http/         # Hono routes
-        persistence/  # node:sqlite + Kysely
-      main.ts         # composition root
+        http/         # Hono routes, request-id, request-logger, error-handler, respond helper
+        persistence/
+          sqlite/     # node:sqlite + Kysely + initSchema + repository
+      main.ts         # composition root: compose({ databasePath, logger?, corsOrigin? })
       index.ts        # server entrypoint
+    test/integration/ # API-level tests against the real composed app (in :memory: SQLite)
   frontend/
     src/
       domain/         # pure types mirroring API contract
@@ -56,7 +58,8 @@ docs/
 | `npm install` | Install all workspace deps |
 | `npm run dev` | Run BE + FE dev servers in parallel |
 | `npm run build` | tsc + vite build per workspace |
-| `npm run test` | `node:test` (BE) + Vitest (FE) |
+| `npm run test` | `node:test` (BE: unit + integration) + Vitest (FE) |
+| `npm run test:integration --workspace @todolist/backend` | BE integration suite only (`test/integration/**`) |
 | `npm run test:e2e` | Playwright (real suite arrives in Session 6) |
 | `npm run lint` | `biome lint .` |
 | `npm run format` | `biome format --write .` |

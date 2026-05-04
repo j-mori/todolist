@@ -9,6 +9,10 @@ services:
     environment:
       NODE_ENV: production
       PORT: "3000"
+      DATABASE_PATH: /data/todolist.db
+      CORS_ORIGIN: http://localhost:8081
+    volumes:
+      - todolist-data:/data
     ports:
       - "3000:3000"
     networks:
@@ -48,3 +52,6 @@ services:
 networks:
   todolist:
     driver: bridge
+
+volumes:
+  todolist-data:

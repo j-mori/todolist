@@ -21,3 +21,7 @@ ADRs capture the *why* behind every non-trivial choice. Each entry below links t
 | 0015 | [Title normalisation — trim before validate, cap at 200 chars](./0015-title-normalisation.md) | accepted |
 | 0016 | [Determinism via ports — `Clock` and `IdGenerator`](./0016-determinism-via-ports.md) | accepted |
 | 0017 | [`Result<T, E>` and tagged-union errors over thrown exceptions](./0017-result-over-exceptions.md) | accepted |
+| 0018 | [REST design — action endpoints, status codes, idempotent semantics](./0018-rest-design.md) | accepted |
+| 0019 | [API contract location — Zod schemas in `@todolist/shared`](./0019-shared-api-contract.md) | accepted |
+| 0020 | [Error response envelope `{ error: { kind, ... } }`](./0020-error-response-envelope.md) | accepted |
+| 0021 | [Schema initialised idempotently on boot — no migration runner (yet)](./0021-schema-init-on-boot.md) | accepted |

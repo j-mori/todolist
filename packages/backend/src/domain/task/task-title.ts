@@ -17,4 +17,6 @@ const from = (input: string): Result<TaskTitle, ValidationError> => {
   return ok(trimmed as TaskTitle);
 };
 
-export const TaskTitle = { from };
+const unsafe = (input: string): TaskTitle => input as TaskTitle;
+
+export const TaskTitle = { from, unsafe };

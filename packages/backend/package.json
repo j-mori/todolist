@@ -5,10 +5,11 @@
   "type": "module",
   "main": "./dist/index.js",
   "scripts": {
-    "dev": "node --watch --experimental-strip-types src/index.ts",
-    "build": "tsc",
+    "dev": "node --watch --experimental-strip-types --no-warnings=ExperimentalWarning src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
-    "test": "node --test --experimental-strip-types 'src/**/*.test.ts'",
+    "test": "node --test --experimental-strip-types --no-warnings=ExperimentalWarning 'src/**/*.test.ts' 'test/**/*.test.ts'",
+    "test:integration": "node --test --experimental-strip-types --no-warnings=ExperimentalWarning 'test/integration/**/*.test.ts'",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
