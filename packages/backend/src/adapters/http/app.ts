@@ -7,7 +7,7 @@ import type { IdGenerator } from '../../application/ports/id-generator.ts';
 import type { TaskRepository } from '../../application/ports/task-repository.ts';
 import { bodyLimit } from './body-limit.ts';
 import { internalErrorHandler } from './error-handler.ts';
-import { requestId, type RequestIdEnv } from './request-id.ts';
+import { type RequestIdEnv, requestId } from './request-id.ts';
 import { requestLogger } from './request-logger.ts';
 import { createTaskRoutes } from './routes/tasks.ts';
 
@@ -35,7 +35,19 @@ export const createApp = (deps: CreateAppDeps): App => {
 
   app.use('*', requestId());
   app.use('*', requestLogger(deps.logger));
-  app.use('*', secureHeaders());
+  // The API serves JSON only — no scripts, no frames, no resources of any
+  // kind should ever be loaded from these responses. The CSP is defensive:
+  // any client that tries to embed or fetch sub-resources from the API gets
+  // a hard no, even if a bug ever causes the API to serve HTML by accident.
+  app.use(
+    '*',
+    secureHeaders({
+      contentSecurityPolicy: {
+        defaultSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    }),
+  );
   app.use(
     '*',
     cors({
