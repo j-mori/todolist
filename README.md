@@ -16,9 +16,22 @@ Then open <http://localhost:8081> for the UI and <http://localhost:3000/health> 
 ```bash
 npm install            # provisions all workspaces (Node 24+, npm 11+)
 npm run dev            # runs backend + frontend dev servers in parallel
-npm run check          # lint + typecheck + tests, the green-bar gate
+npm run check          # lint + typecheck + unit/component tests + bundle budget — green-bar gate
 npm run build          # tsc + vite build per package
 ```
+
+## End-to-end tests
+
+Playwright drives the docker-composed stack (BE + nginx-fronted FE) through the same paths a real user would.
+
+```bash
+npm run install-browsers --workspace @todolist/e2e   # one-off: downloads Chromium
+npm run test:e2e                                     # boots stack if not running, runs suite, tears down
+npm run test:e2e:ui                                  # interactive Playwright UI mode
+npm run test:e2e:report                              # opens the last HTML report
+```
+
+The suite auto-detects an externally-managed stack: if you've already run `docker compose up -d`, it leaves the stack alone in teardown. Otherwise it spins one up via `docker compose up -d --wait --build` and tears it down with `docker compose down -v`. See [`packages/e2e/README.md`](packages/e2e/README.md) and [ADR-0030](docs/decisions/0030-e2e-conventions.md).
 
 ## Architecture in one paragraph
 

@@ -11,17 +11,22 @@
   "workspaces": [
     "packages/shared",
     "packages/backend",
-    "packages/frontend"
+    "packages/frontend",
+    "packages/e2e"
   ],
   "scripts": {
     "dev": "npm run dev --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
-    "test:e2e": "echo 'E2E suite arrives in Session 6' && exit 0",
+    "test": "npm run test --workspace @todolist/shared --if-present && npm run test --workspace @todolist/backend --if-present && npm run test --workspace @todolist/frontend --if-present",
+    "test:e2e": "npm run test --workspace @todolist/e2e",
+    "test:e2e:headed": "npm run test:headed --workspace @todolist/e2e",
+    "test:e2e:ui": "npm run test:ui --workspace @todolist/e2e",
+    "test:e2e:report": "npm run report --workspace @todolist/e2e",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "biome lint .",
     "format": "biome format --write .",
-    "check": "npm run lint && npm run typecheck && npm run test"
+    "check:bundle-size": "npm run build --workspace @todolist/frontend && node scripts/check-bundle-size.mjs",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run check:bundle-size"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.14",

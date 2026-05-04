@@ -18,7 +18,7 @@ State-of-the-art TypeScript 2026 reference app: production-ready, hexagonal, mul
 | FE data | TanStack Query v5 | [0008](docs/decisions/0008-frontend-data-fetching.md) |
 | Styling | Tailwind v4 (`@tailwindcss/vite`) | [0009](docs/decisions/0009-styling.md) |
 | Lint/format | Biome v2 | [0010](docs/decisions/0010-lint-format.md) |
-| Tests | `node:test` (BE), Vitest (FE), Playwright (E2E) | [0011](docs/decisions/0011-test-strategy.md) |
+| Tests | `node:test` (BE), Vitest (FE), Playwright (E2E) | [0011](docs/decisions/0011-test-strategy.md), [0030](docs/decisions/0030-e2e-conventions.md) |
 | Containers | Per-package multi-stage Docker + compose | [0012](docs/decisions/0012-container-strategy.md) |
 | Layout | Hexagonal per package | [0013](docs/decisions/0013-hexagonal-layout.md) |
 
@@ -40,12 +40,26 @@ packages/
     test/integration/ # API-level tests against the real composed app (in :memory: SQLite)
   frontend/
     src/
-      domain/         # pure types mirroring API contract
-      application/    # query/mutation hooks (TanStack Query)
+      domain/         # Result<T,E>, ApiClientError tagged union, ApiClientErrorException
+      application/
+        api-context.tsx                 # TasksApi via React context
+        notifications/                  # in-house toasts (provider + format-api-client-error helper) — ADR-0028
+        queries/                        # use-tasks-query + 5 mutation hooks + mutation-helpers (ADR-0027)
+        formatting/                     # Intl-based timestamp formatter
       adapters/
-        api/          # typed fetch client
-      ui/             # React components
-      main.tsx        # bootstraps React
+        api/          # http-client (fetch + request-id + schema-parsed responses), tasks-api, api-base-url
+      ui/             # AppShell · TaskList · TaskRow · AddTaskForm · TaskTitleInput · NotificationsViewport · ErrorBoundary · LiveRegion + tests
+      main.tsx        # composition root: builds httpClient + tasksApi + QueryClient + NotificationsProvider + provider tree
+      theme.css       # @theme design tokens (light + dark via prefers-color-scheme) — ADR-0026
+    .env.example      # documents VITE_API_BASE_URL (defaults to /api) — ADR-0023
+  e2e/                # Playwright suite — drives the docker-composed stack via role-based selectors (ADR-0030)
+    playwright.config.ts
+    playwright/
+      global-setup.ts        # auto-detect external stack; otherwise docker compose up -d --wait --build
+      global-teardown.ts     # docker compose down -v iff setup brought the stack up
+      fixtures.ts            # apiClient + cleanDb autoFixture + seedTasks + taskListPage
+      pages/task-list.page.ts # thin page object for shared locators
+    tests/                  # smoke · add-task · complete-reopen · edit-task · delete-task · error-recovery
 docs/
   decisions/   # ADRs (see docs/decisions/README.md)
   sessions/    # per-session plans, kept after approval
@@ -58,9 +72,10 @@ docs/
 | `npm install` | Install all workspace deps |
 | `npm run dev` | Run BE + FE dev servers in parallel |
 | `npm run build` | tsc + vite build per workspace |
-| `npm run test` | `node:test` (BE: unit + integration) + Vitest (FE) |
+| `npm run test` | `node:test` (BE: 80 unit + integration) + Vitest (FE: 23) — green-bar gate |
 | `npm run test:integration --workspace @todolist/backend` | BE integration suite only (`test/integration/**`) |
-| `npm run test:e2e` | Playwright (real suite arrives in Session 6) |
+| `npm run test:e2e` | Playwright E2E (10 specs against the docker-composed stack — see ADR-0030) |
+| `npm run test:e2e:ui` / `:report` / `:headed` | Playwright UI mode / HTML report / headed run (delegate to the e2e workspace) |
 
 ### Backend configuration
 
@@ -73,7 +88,9 @@ Composition root is `compose(deps)` in `packages/backend/src/main.ts` — pure d
 | `npm run check` | lint + typecheck + test (the green-bar gate) |
 | `docker compose up --build` | Boot the full stack |
 
-Stack ports: BE on `:3000`, FE on `:8081`. (8080 is taken by Docker Desktop on the dev machine.)
+Stack ports: BE on `:3000`, FE on `:8081` (Docker) or `:5173` (Vite dev). 8080 is taken by Docker Desktop on the dev machine.
+
+The FE always talks to the API at the relative path `/api/...`. In dev, Vite's `server.proxy` rewrites it to `http://localhost:3000`; in Docker, nginx in the FE container rewrites it to `http://backend:3000`. No CORS in either supported environment. Override with `VITE_API_BASE_URL` (build-time) only for unusual deployments. See ADR-0023.
 
 ## Layering rules (hexagonal)
 
@@ -91,7 +108,7 @@ Each test must justify its existence by failing if a real behaviour breaks.
 - **Unit** (`node:test`, BE): pure domain + use cases. No I/O. No port mocks at the application boundary except where simulating adapter behaviour the unit must react to.
 - **Integration** (`node:test`, BE): HTTP + persistence against real adapters (in-memory SQLite, in-process Hono). No port-level mocks.
 - **Component** (Vitest + Testing Library + happy-dom, FE): renders components with realistic props/contexts; asserts what the user perceives.
-- **E2E** (Playwright): user journeys against the docker-composed stack with seeded data.
+- **E2E** (Playwright, `packages/e2e`): user journeys against the docker-composed stack with API-driven seeding/cleanup. Role-based selectors only; no `data-testid`. Serial workers (shared SQLite). See ADR-0030.
 
 If a test passes after deleting its target behaviour, the test is wrong. If a test mocks an adapter at the port boundary, it is the wrong layer.
 

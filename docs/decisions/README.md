@@ -26,3 +26,10 @@ ADRs capture the *why* behind every non-trivial choice. Each entry below links t
 | 0020 | [Error response envelope `{ error: { kind, ... } }`](./0020-error-response-envelope.md) | accepted |
 | 0021 | [Schema initialised idempotently on boot — no migration runner (yet)](./0021-schema-init-on-boot.md) | accepted |
 | 0022 | [Production hardening — explicit configuration, required deps, security middleware](./0022-production-hardening.md) | accepted |
+| 0023 | [FE → BE traffic via same-origin `/api` proxy in dev (Vite) and prod (nginx)](./0023-frontend-dev-proxy-and-prod-nginx-proxy.md) | accepted |
+| 0024 | [Wire dates stay as ISO strings on the FE; `Intl` formats at the UI edge](./0024-frontend-wire-dates-as-strings.md) | accepted |
+| 0025 | [FE API client — per-resource object, `Result`-typed, schema-validated responses](./0025-frontend-api-client-shape.md) | accepted |
+| 0027 | [FE mutation pattern — TanStack Query optimistic updates, `Error`-subclass throws, typed `mutation.error`](./0027-frontend-mutation-pattern.md) | accepted |
+| 0028 | [FE notifications — in-house provider, polite live region, errors persist with `requestId`](./0028-frontend-notifications.md) | accepted |
+| 0029 | [Frontend production-readiness cleanup — strict typing, env-driven config, request cancellation, security headers, bundle budgets](./0029-frontend-production-readiness-cleanup.md) | accepted |
+| 0030 | [E2E conventions — Playwright + docker compose, role-based selectors, API-driven isolation](./0030-e2e-conventions.md) | accepted |
