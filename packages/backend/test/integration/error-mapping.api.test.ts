@@ -2,12 +2,8 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { pino } from 'pino';
 import { compose } from '../../src/main.ts';
-import {
-  createFixedClock,
-} from '../../src/application/test-support/fixed-clock.test-support.ts';
-import {
-  createSequentialIdGenerator,
-} from '../../src/application/test-support/sequential-id-generator.test-support.ts';
+import { createFixedClock } from '../../src/application/test-support/fixed-clock.test-support.ts';
+import { createSequentialIdGenerator } from '../../src/application/test-support/sequential-id-generator.test-support.ts';
 import type { TaskRepository } from '../../src/application/ports/task-repository.ts';
 import { expectApiError } from './_helpers.ts';
 

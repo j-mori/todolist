@@ -59,7 +59,10 @@ const parsePositiveInt = (raw: string, key: string): number => {
 };
 
 const parseCorsOrigin = (raw: string): string | string[] => {
-  const parts = raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+  const parts = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
   if (parts.length === 0) throw new ConfigError('CORS_ORIGIN must list at least one origin');
   return parts.length === 1 ? (parts[0] as string) : parts;
 };

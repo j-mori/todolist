@@ -41,7 +41,11 @@ describe('Task', () => {
   });
 
   it('complete on an already-completed task is idempotent (same instance, updatedAt unchanged)', () => {
-    const t0 = Task.create({ id: idOf(ID), title: titleOf('x'), now: new Date('2026-05-04T10:00:00Z') });
+    const t0 = Task.create({
+      id: idOf(ID),
+      title: titleOf('x'),
+      now: new Date('2026-05-04T10:00:00Z'),
+    });
     const completed = t0.complete(new Date('2026-05-04T11:00:00Z'));
     const again = completed.complete(new Date('2026-05-04T12:00:00Z'));
 
@@ -50,7 +54,11 @@ describe('Task', () => {
   });
 
   it('reopen on a completed task returns a pending task with advanced updatedAt', () => {
-    const t0 = Task.create({ id: idOf(ID), title: titleOf('x'), now: new Date('2026-05-04T10:00:00Z') });
+    const t0 = Task.create({
+      id: idOf(ID),
+      title: titleOf('x'),
+      now: new Date('2026-05-04T10:00:00Z'),
+    });
     const completed = t0.complete(new Date('2026-05-04T11:00:00Z'));
     const reopened = completed.reopen(new Date('2026-05-04T12:00:00Z'));
 
@@ -60,7 +68,11 @@ describe('Task', () => {
   });
 
   it('reopen on an already-pending task is idempotent (same instance, updatedAt unchanged)', () => {
-    const t0 = Task.create({ id: idOf(ID), title: titleOf('x'), now: new Date('2026-05-04T10:00:00Z') });
+    const t0 = Task.create({
+      id: idOf(ID),
+      title: titleOf('x'),
+      now: new Date('2026-05-04T10:00:00Z'),
+    });
     const again = t0.reopen(new Date('2026-05-04T12:00:00Z'));
 
     assert.equal(again, t0);
@@ -68,7 +80,11 @@ describe('Task', () => {
   });
 
   it('withTitle is idempotent when the new title equals the current one (same instance, updatedAt unchanged)', () => {
-    const t0 = Task.create({ id: idOf(ID), title: titleOf('Buy milk'), now: new Date('2026-05-04T10:00:00Z') });
+    const t0 = Task.create({
+      id: idOf(ID),
+      title: titleOf('Buy milk'),
+      now: new Date('2026-05-04T10:00:00Z'),
+    });
     const sameTitle = titleOf('Buy milk');
     const again = t0.withTitle(sameTitle, new Date('2026-05-04T11:00:00Z'));
 

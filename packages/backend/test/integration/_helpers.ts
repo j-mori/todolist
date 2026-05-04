@@ -1,9 +1,5 @@
 import { pino } from 'pino';
-import {
-  errorResponseSchema,
-  type ApiError,
-  type ErrorResponse,
-} from '@todolist/shared';
+import { errorResponseSchema, type ApiError, type ErrorResponse } from '@todolist/shared';
 import {
   createFixedClock,
   type FixedClock,

@@ -10,7 +10,8 @@ const levelFor = (status: number): 'info' | 'warn' | 'error' => {
   return 'info';
 };
 
-export const requestLogger = (logger: Logger): MiddlewareHandler<RequestLoggerEnv> =>
+export const requestLogger =
+  (logger: Logger): MiddlewareHandler<RequestLoggerEnv> =>
   async (c, next) => {
     const start = performance.now();
     await next();

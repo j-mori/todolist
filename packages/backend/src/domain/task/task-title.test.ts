@@ -40,5 +40,4 @@ describe('TaskTitle', () => {
     assert.equal(r.ok, false);
     if (!r.ok) assert.match(r.error.reason, /200/);
   });
-
 });

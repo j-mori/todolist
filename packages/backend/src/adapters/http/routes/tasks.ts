@@ -10,12 +10,7 @@ import type { Clock } from '../../../application/ports/clock.ts';
 import type { IdGenerator } from '../../../application/ports/id-generator.ts';
 import type { TaskRepository } from '../../../application/ports/task-repository.ts';
 import { parseIdParam, parseJsonBody } from '../parse.ts';
-import {
-  respondCreated,
-  respondNoContent,
-  respondOk,
-  respondValidationError,
-} from '../respond.ts';
+import { respondCreated, respondNoContent, respondOk, respondValidationError } from '../respond.ts';
 import { taskToWire } from '../wire.ts';
 
 export type TaskRoutesDeps = {

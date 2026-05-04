@@ -47,7 +47,9 @@ describe('createSqliteTaskRepository', () => {
     const t0 = taskOf({ id: ID_A, title: 'first', now: '2026-05-04T10:00:00Z' });
     await repo.save(t0);
 
-    const t1 = t0.withTitle(titleOf('second'), new Date('2026-05-04T11:00:00Z')).complete(new Date('2026-05-04T11:00:00Z'));
+    const t1 = t0
+      .withTitle(titleOf('second'), new Date('2026-05-04T11:00:00Z'))
+      .complete(new Date('2026-05-04T11:00:00Z'));
     await repo.save(t1);
 
     const found = await repo.findById(idOf(ID_A));
