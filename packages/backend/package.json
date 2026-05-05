@@ -5,7 +5,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "scripts": {
-    "dev": "node --watch --experimental-strip-types --no-warnings=ExperimentalWarning src/index.ts",
+    "dev": "node --env-file=../../.env --watch --experimental-strip-types --no-warnings=ExperimentalWarning src/index.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
     "test": "node --test --experimental-strip-types --no-warnings=ExperimentalWarning 'src/**/*.test.ts' 'test/**/*.test.ts'",
