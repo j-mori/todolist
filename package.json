@@ -17,6 +17,7 @@
   "scripts": {
     "dev": "npm run dev --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
+    "build:demo": "VITE_DEMO_MODE=true npm run build --workspace @todolist/frontend -- --base=/todolist/",
     "test": "npm run test --workspace @todolist/shared --if-present && npm run test --workspace @todolist/backend --if-present && npm run test --workspace @todolist/frontend --if-present",
     "test:integration": "npm run test:integration --workspace @todolist/backend",
     "test:e2e": "npm run test --workspace @todolist/e2e",

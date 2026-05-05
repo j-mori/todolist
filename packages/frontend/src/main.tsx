@@ -11,12 +11,23 @@ import { App } from './ui/App.tsx';
 import { ErrorBoundary } from './ui/ErrorBoundary.tsx';
 import './styles.css';
 
+const startMockWorker = async (): Promise<void> => {
+  if (import.meta.env.VITE_DEMO_MODE !== 'true') return;
+  const { worker } = await import('./mocks/browser.ts');
+  await worker.start({
+    serviceWorker: { url: `${import.meta.env.BASE_URL}mockServiceWorker.js` },
+    onUnhandledRequest: 'bypass',
+  });
+};
+
 const httpClient = createHttpClient({ baseUrl: getApiBaseUrl() });
 const tasksApi = createTasksApi(httpClient);
 const queryClient = new QueryClient(QUERY_CLIENT_DEFAULTS);
 
 const container = document.getElementById('root');
 if (!container) throw new Error('root container missing in index.html');
+
+await startMockWorker();
 
 createRoot(container).render(
   <StrictMode>
