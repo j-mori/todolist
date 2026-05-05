@@ -36,7 +36,7 @@ If Node or npm is below the minimum, stop — nothing else will work.
 npm install
 ```
 
-This installs all workspace deps (`packages/backend`, `packages/frontend`, `packages/shared`, `packages/e2e`) and registers the `lefthook` pre-commit hook (ADR-0033). If it fails, show the full npm error — do not truncate.
+This installs all workspace deps (`packages/backend`, `packages/frontend`, `packages/shared`, `packages/e2e`) and registers the `lefthook` pre-commit hook (ADR-0016). If it fails, show the full npm error — do not truncate.
 
 ## Step 3 — Environment file
 
@@ -75,6 +75,8 @@ Then offer two paths:
 docker compose up --build
 # App: http://localhost:8081  API readiness: http://localhost:3000/readyz
 ```
+
+> **Known build warning:** during `npm ci` inside the Alpine builder, you may see `Error: exec: "git": executable file not found in $PATH`. This comes from the root `prepare` script running `lefthook install` — git is absent in the container image. The `|| true` in the script makes it non-fatal; the build completes normally. Do not treat this as an error.
 
 **Option B — dev servers** (recommended for active development):
 ```bash
