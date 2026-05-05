@@ -1,6 +1,6 @@
 /**
  * QueryKey factory for task-related TanStack Query caches. Centralised so
- * Session 5 mutations can target consistent keys for invalidation.
+ * mutations can target consistent keys for invalidation.
  */
 export const taskKeys = {
   all: ['tasks'] as const,

@@ -1,6 +1,6 @@
 /**
  * Formats an ISO timestamp into a locale-aware short date+time. Wire dates are
- * strings throughout (ADR-0024); formatting happens at the UI edge only.
+ * strings throughout; formatting happens at the UI edge only.
  */
 const FORMATTER = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',

@@ -1,8 +1,7 @@
-# ADR-0012: Per-package multi-stage Docker + root compose
+# ADR-0011: Per-package multi-stage Docker + root compose
 
 **Status:** accepted
 **Date:** 2026-05-04
-**Session:** 01
 
 ## Context
 The brief requires the app to be runnable end-to-end via Docker. Two viable shapes: (a) a single Docker image bundling both BE and FE behind one server, or (b) one image per package, orchestrated by `docker-compose`. (a) is simpler but conflates concerns and prevents independent scaling/deployment; (b) reflects how the app would actually run in production.
@@ -19,9 +18,8 @@ Build context is the repo root (so `package-lock.json` and the `packages/shared`
 ## Consequences
 - **Positive:** Slim runtime images (Alpine, no dev deps). Independently buildable services. Healthchecks gate startup ordering. The "production" runtime closely mirrors how a real deployment would work.
 - **Trade-off:** Two Dockerfiles to maintain. Build time is ~10s for the BE and ~15s for the FE on a warm cache — acceptable.
-- **Follow-up:** Session 3 adds a SQLite volume to the backend service. Session 7 considers a non-root frontend image and tighter security headers in `nginx.conf`.
 
 ## Alternatives considered
 - **Single combined image** — rejected: conflates concerns and prevents the FE/BE from being scaled or deployed independently.
 - **Distroless instead of Alpine** — rejected: marginal security gain at this scope; Alpine images keep wget/sh available for healthchecks and shell debugging.
-- **Bun runtime image** — rejected: per ADR-0002 we target Node.
+- **Bun runtime image** — rejected: we target Node.

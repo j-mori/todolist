@@ -8,7 +8,6 @@ const DEFAULT_PROXY_TARGET = 'http://localhost:3000';
 // `/api` is the same path the bundle uses in production (nginx proxies it to
 // the backend container). In dev, Vite forwards the same path to the configured
 // backend (default `http://localhost:3000`, override with VITE_DEV_PROXY_TARGET).
-// See ADR-0023.
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const proxyTarget = env.VITE_DEV_PROXY_TARGET ?? DEFAULT_PROXY_TARGET;

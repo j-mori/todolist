@@ -1,8 +1,8 @@
 {
   "name": "todolist",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
-  "description": "State-of-the-art TypeScript 2026 reference app: hexagonal, multi-layer tested, fully containerised.",
+  "description": "A full-stack to-do list application built with Node.js, Hono, React, and TypeScript.",
   "type": "module",
   "engines": {
     "node": ">=24.0.0",

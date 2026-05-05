@@ -2,7 +2,7 @@
 
 Playwright E2E suite for the to-do-list reference app. Drives the docker-composed stack (BE on `:3000`, FE-with-nginx-proxy on `:8081`) through the same code paths a real user would.
 
-See [ADR-0030](../../docs/decisions/0030-e2e-conventions.md) for the conventions.
+See [ADR-0015](../../docs/adrs/0015-tests-e2e-conventions.md) for the conventions.
 
 ## Prerequisites
 

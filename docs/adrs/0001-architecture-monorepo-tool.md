@@ -2,7 +2,6 @@
 
 **Status:** accepted
 **Date:** 2026-05-04
-**Session:** 01
 
 ## Context
 The brief mandates a monorepo with separate FE and BE packages and asks us to avoid useless dependencies. Three packages are in scope (`backend`, `frontend`, `shared`), no fan-out to dozens. Pulling in a workspace orchestrator (Nx, Turborepo) for a 3-package repo would add tooling, config and a learning surface that pays back nothing at this scale.

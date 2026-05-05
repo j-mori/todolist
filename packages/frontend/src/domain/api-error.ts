@@ -1,7 +1,7 @@
 /**
  * Adapter-level error vocabulary for the FE HTTP client. Superset of the wire
  * `ApiError` from `@todolist/shared`: adds `NetworkError` (fetch rejection) and
- * `ContractViolation` (response failed schema parse). See ADR-0025.
+ * `ContractViolation` (response failed schema parse).
  */
 export type ApiClientError =
   | {

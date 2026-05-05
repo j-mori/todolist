@@ -1,16 +1,15 @@
-# ADR-0030: E2E conventions — Playwright + docker compose, role-based selectors, API-driven isolation
+# ADR-0015: E2E conventions — Playwright + docker compose, role-based selectors, API-driven isolation
 
 **Status:** accepted
 **Date:** 2026-05-04
-**Session:** 06
 
 ## Context
 
-ADR-0011 chose Playwright as the third test layer ("E2E against the docker-composed stack with seeded data"). Session 6 implemented it and surfaced enough reusable conventions to merit pinning so future sessions don't re-litigate them.
+ADR-0010 chose Playwright as the third test layer ("E2E against the docker-composed stack with seeded data"). The conventions below are pinned so they aren't re-litigated each time the suite grows.
 
 Two structural choices framed the rest:
 
-1. **The whole stack lives in docker compose.** The browser must reach the FE through nginx (`:8081`) so the same `/api` rewrite rules production uses are exercised. Local-only setups (running BE + Vite dev directly) would skip ADR-0023's nginx proxy and the security headers ADR-0029 added.
+1. **The whole stack lives in docker compose.** The browser must reach the FE through nginx (`:8081`) so the same `/api` rewrite rules production uses are exercised. Local-only setups (running BE + Vite dev directly) would skip the production nginx proxy and the production security headers.
 2. **The BE persists to a single SQLite database.** There's no notion of a per-test database or a "test mode". Trying to bolt either on would push test-only seams into production code.
 
 These two facts shape every other convention below.
@@ -27,7 +26,7 @@ Rejected: Playwright's `webServer` config. It's designed for a single-process de
 
 A `cleanDb` autoFixture in `playwright/fixtures.ts` runs before every test: `GET /api/tasks` then `DELETE /api/tasks/:id` per task. A separate `seedTasks(titles)` fixture POSTs ahead of tests that need pre-populated state. Both go through Playwright's built-in `request` fixture so requests share cookies/proxy with the page.
 
-Rejected: a test-only `POST /test/reset` endpoint. Pollutes the BE wire surface; ADR-0017 (Result over exceptions) and ADR-0020 (error envelope) would force shaping its responses too. Six lines of fixture code do the job without adding a production-code seam.
+Rejected: a test-only `POST /test/reset` endpoint. Pollutes the BE wire surface; ADR-0013 (Result over exceptions) would force shaping its responses too. Six lines of fixture code do the job without adding a production-code seam.
 
 Rejected: `docker compose down/up` between tests. Adds ~10 s per test and gains nothing over an honest API wipe.
 
@@ -39,7 +38,7 @@ Per-worker DB isolation would require either a `DATABASE_PATH`-per-worker env (f
 
 **4. Selectors are role-based, never `data-testid`.**
 
-The FE components own their `aria-label` props (`Mark "<title>" as completed`, `Edit "<title>"`, etc.; see Session-5 changes). Playwright's `page.getByRole('checkbox', { name: ... })` resolves them via the standard ARIA role/name model the browser already exposes. `data-testid` is a coupling escape hatch for components whose names don't already distinguish them — none of ours fall into that category.
+The FE components own their `aria-label` props (`Mark "<title>" as completed`, `Edit "<title>"`, etc.). Playwright's `page.getByRole('checkbox', { name: ... })` resolves them via the standard ARIA role/name model the browser already exposes. `data-testid` is a coupling escape hatch for components whose names don't already distinguish them — none of ours fall into that category.
 
 The `TaskListPage` page object exposes the locators that show up in more than one spec; everything else stays inline. Page objects earn their place when locators repeat, not when actions repeat.
 
@@ -64,13 +63,12 @@ The FE has no platform-conditional code paths. Adding Firefox/WebKit triples run
 
 **8. The suite is a separate gate, not part of `npm run check`.**
 
-`npm run check` (lint + typecheck + unit/component + bundle budget) runs in seconds and is the green-bar that every commit clears. `npm run test:e2e` requires Docker, runs the full stack, and takes longer (~5 s against a warm stack, longer cold). It belongs on a CI job that runs after `check` passes — Session 7's CI work owns wiring this in.
+`npm run check` (lint + typecheck + unit/component + bundle budget) runs in seconds and is the green-bar that every commit clears. `npm run test:e2e` requires Docker, runs the full stack, and takes longer (~5 s against a warm stack, longer cold). It belongs on a CI job that runs after `check` passes.
 
 ## Consequences
 
 - **Positive:** The stack lifecycle "just works" whether you have it up or not. Seeding/cleanup is six lines of fixture code with no production-code coupling. Selectors are stable because they're driven by the named ARIA roles the FE components already expose. Failure surfaces are inspectable; success runs are silent. The browser matrix is opt-in for cost discipline.
 - **Trade-off:** Serial execution is the price of a single shared BE database. With 12 specs running ~4-5 s, the cost is invisible; if the suite grows past ~50 specs, revisit per-worker DB isolation. The auto-detect path means a spec author can't trivially assert "the stack was owned by setup" — but that's exactly the point: the test contract is the running stack, not how it got there.
-- **Follow-up:** Session 7 wires `npm run test:e2e` into CI, decides on artefact upload, and decides whether to widen the browser matrix per-branch.
 
 ## Alternatives considered
 

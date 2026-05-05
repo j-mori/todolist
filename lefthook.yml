@@ -1,7 +1,7 @@
 # Pre-commit hook for the todolist repo.
 #
 # Installation: `npm install` runs `lefthook install` via the `prepare` script.
-# Bypassing the hook is forbidden by repo convention (see CLAUDE.md).
+# Bypassing the hook is forbidden by repo convention.
 # Use `git commit --no-verify` only with an explicit reason in the commit body.
 
 pre-commit:

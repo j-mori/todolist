@@ -1,12 +1,11 @@
-# ADR-0033: `lefthook` for pre-commit hooks (biome on staged files)
+# ADR-0016: `lefthook` for pre-commit hooks (biome on staged files)
 
 **Status:** accepted
 **Date:** 2026-05-05
-**Session:** 07
 
 ## Context
 
-The project's stated north star is "state-of-the-art TypeScript in 2026" and that includes the developer experience. The cheap-and-fast feedback for "what landed in this commit?" is a pre-commit hook. Without one, `npm run check` runs in CI minutes after the push and the engineer is already on the next thing — a Biome formatting error becomes a back-and-forth instead of a no-op.
+The project's north star is a polished 2026 TypeScript reference, and that includes the developer experience. The cheap-and-fast feedback for "what landed in this commit?" is a pre-commit hook. Without one, `npm run check` runs in CI minutes after the push and the engineer is already on the next thing — a Biome formatting error becomes a back-and-forth instead of a no-op.
 
 The choice space:
 1. Husky — the JS-incumbent. Node-only, requires Node to run hooks.

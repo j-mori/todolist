@@ -1,8 +1,7 @@
-# ADR-0013: Hexagonal folder layout per package
+# ADR-0012: Hexagonal folder layout per package
 
 **Status:** accepted
 **Date:** 2026-05-04
-**Session:** 01
 
 ## Context
 The brief asks for a hexagonal architecture: domain logic isolated from ports and adapters. Folder structure communicates and constrains; if the layering is invisible, it will rot. Both BE and FE benefit — the FE has its own domain model (the API contract reshaped for UI needs), application layer (query/mutation hooks), and adapters (HTTP client, eventually browser storage).
@@ -29,8 +28,7 @@ The `@todolist/shared` workspace holds *only* the API contract (Zod schemas + in
 
 ## Consequences
 - **Positive:** Domain testable without I/O. Adapters swappable (in-memory ↔ SQLite, mock ↔ real HTTP) without touching domain. Composition root makes wiring explicit and reviewable in one file.
-- **Trade-off:** More folders for a small codebase; the discipline is the point. Lint enforcement of import boundaries is a known gap (see ADR-0010 follow-up).
-- **Follow-up:** Session 7 — add `dependency-cruiser` or a Biome plugin to fail CI on layering violations.
+- **Trade-off:** More folders for a small codebase; the discipline is the point.
 
 ## Alternatives considered
 - **Feature-folder layout** (`src/tasks/{model,service,api,ui}.ts`) — rejected: scales well by feature but obscures the ports/adapters split a hexagonal showcase needs to make obvious.

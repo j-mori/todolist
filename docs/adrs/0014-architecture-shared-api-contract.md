@@ -1,8 +1,7 @@
-# ADR-0019: API contract location — Zod schemas in `@todolist/shared`
+# ADR-0014: API contract location — Zod schemas in `@todolist/shared`
 
 **Status:** accepted
 **Date:** 2026-05-04
-**Session:** 03
 
 ## Context
 Three places need the same understanding of the wire contract: the BE (validates incoming payloads, serialises responses), the FE (constructs requests, types responses, optionally validates), and developer tooling (OpenAPI export, future codegen). Three options:
@@ -11,7 +10,7 @@ Three places need the same understanding of the wire contract: the BE (validates
 2. **Zod schemas in `@todolist/shared`** with `z.infer` types exported alongside. One source of truth.
 3. **OpenAPI spec as source of truth**, both BE and FE generate from it. Heavy machinery for a 7-route API.
 
-ADR-0004 already pinned Zod as the validator. The only real question is whether the schemas live in BE-only or shared.
+ADR-0003 already pinned Zod as the validator. The only real question is whether the schemas live in BE-only or shared.
 
 ## Decision
 **Option 2.** `@todolist/shared` exposes the contract: Zod schemas + inferred types, organised by concern.
@@ -31,9 +30,9 @@ packages/shared/src/
 The BE re-validates inside the domain layer too (`TaskTitle.from`, etc.) — that's deliberate: Zod-at-the-edge guards the protocol; the domain VOs guard the invariant. Two layers, two responsibilities.
 
 ## Consequences
-- **Positive:** Single source of truth — schema, type, validator. No drift between BE response shape and FE expectations. New endpoints are a Zod schema in one file plus a route handler that imports it. Adding OpenAPI export later (Session 7?) is a `@hono/zod-openapi` install, no schema rewrite.
+- **Positive:** Single source of truth — schema, type, validator. No drift between BE response shape and FE expectations. New endpoints are a Zod schema in one file plus a route handler that imports it. Adding OpenAPI export later is a `@hono/zod-openapi` install, no schema rewrite.
 - **Trade-off:** `@todolist/shared` is no longer dependency-free; it pulls Zod. Bundle impact on the FE is bounded by tree-shaking when only types are imported. Acceptable.
-- **Follow-up:** Session 4 (FE) imports types only by default. If it wants client-side validation of responses (network-level paranoia), it imports the schemas. Session 7 may add `@hono/zod-openapi` to expose `/openapi.json`.
+- **Follow-up:** the FE imports types only by default. If it wants client-side validation of responses (network-level paranoia), it imports the schemas.
 
 ## Alternatives considered
 - **Hand-written types** — rejected: drift is a matter of when, not if; the brief explicitly wants production-ready.
