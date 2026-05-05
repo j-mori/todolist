@@ -15,6 +15,7 @@ Each ADR captures one decision: the context, the choice, the consequences, and w
 | [0014](0014-architecture-shared-api-contract.md) | API contract location — Zod schemas in `@todolist/shared` |
 | [0016](0016-architecture-lefthook-pre-commit.md) | `lefthook` for pre-commit hooks |
 | [0017](0017-architecture-frontend-api-proxy.md) | Same-origin `/api` via reverse proxy (nginx in prod, Vite in dev) |
+| [0018](0018-architecture-ci-and-demo-deploy.md) | GitHub Actions CI + MSW-backed GitHub Pages demo |
 
 ## Backend
 

@@ -21,6 +21,7 @@
 | `npm run test:integration` | BE integration suite only. |
 | `npm run test:e2e:ui` / `:headed` / `:report` | Playwright variants. |
 | `npm run build` | `tsc` + `vite build` per package. |
+| `npm run build:demo` | FE bundle for GitHub Pages: `VITE_DEMO_MODE=true` + `--base=/todolist/`. Ships MSW for in-browser mocks. Used by the deploy job. |
 
 ## Backend env
 

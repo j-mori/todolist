@@ -1,6 +1,8 @@
 # Todolist
 
-TypeScript 2026 reference app: production-ready, hexagonal, multi-layer tested, fully containerised.
+TypeScript 2026 reference: hexagonal monorepo, multi-layer tested, fully containerised, MSW-backed live demo at <https://j-mori.github.io/todolist/>.
+
+Read this file first. Every decision below has an ADR — follow the link before changing the choice. Never write decisions into this file; this file is an index.
 
 ## Stack
 
@@ -21,120 +23,62 @@ TypeScript 2026 reference app: production-ready, hexagonal, multi-layer tested, 
 | Errors as values | `Result<T, E>` + tagged-union domain errors | [0013](docs/adrs/0013-architecture-result-over-exceptions.md) |
 | API contract | Zod schemas in `@todolist/shared` | [0014](docs/adrs/0014-architecture-shared-api-contract.md) |
 | Pre-commit | `lefthook` running Biome on staged files | [0016](docs/adrs/0016-architecture-lefthook-pre-commit.md) |
+| FE → API proxy | Same-origin `/api` (nginx in prod, Vite in dev) | [0017](docs/adrs/0017-architecture-frontend-api-proxy.md) |
+| CI + demo deploy | GitHub Actions + MSW-backed GitHub Pages | [0018](docs/adrs/0018-architecture-ci-and-demo-deploy.md) |
 
-## Layout
+## Where things live
 
 ```
 packages/
-  shared/        # API contract (Zod schemas + inferred types) under src/contract/. No business logic. (ADR-0014)
-  backend/
-    src/
-      domain/         # pure: entities, value objects, errors
-      application/    # use cases + ports
-      adapters/
-        http/         # Hono routes, request-id, request-logger, error-handler, respond helper
-        persistence/
-          sqlite/     # node:sqlite + Kysely + initSchema + repository
-      main.ts         # composition root: compose({ databasePath, logger?, corsOrigin? })
-      index.ts        # server entrypoint
-    test/integration/ # API-level tests against the real composed app (in :memory: SQLite)
-  frontend/
-    src/
-      domain/         # Result<T,E>, ApiClientError tagged union, ApiClientErrorException
-      application/
-        api-context.tsx                 # TasksApi via React context
-        notifications/                  # in-house toasts (provider + format-api-client-error helper)
-        queries/                        # use-tasks-query + 5 mutation hooks + mutation-helpers
-        formatting/                     # Intl-based timestamp formatter
-      adapters/
-        api/          # http-client (fetch + request-id + schema-parsed responses), tasks-api, api-base-url
-      ui/             # AppShell · TaskList · TaskRow · AddTaskForm · TaskTitleInput · NotificationsViewport · ErrorBoundary · LiveRegion + tests
-      main.tsx        # composition root: builds httpClient + tasksApi + QueryClient + NotificationsProvider + provider tree
-      theme.css       # @theme design tokens (light + dark via prefers-color-scheme)
-    .env.example      # documents VITE_API_BASE_URL (defaults to /api)
-  e2e/                # Playwright suite — drives the docker-composed stack via role-based selectors (ADR-0015)
-    playwright.config.ts
-    playwright/
-      global-setup.ts        # auto-detect external stack; otherwise docker compose up -d --wait --build
-      global-teardown.ts     # docker compose down -v iff setup brought the stack up
-      fixtures.ts            # apiClient + cleanDb autoFixture + seedTasks + taskListPage
-      pages/task-list.page.ts # thin page object for shared locators
-    tests/                  # smoke · add-task · complete-reopen · edit-task · delete-task · error-recovery
+  shared/      # API contract — Zod schemas + inferred types. No business logic.
+  backend/     # Hono + node:sqlite. Hex layout: domain/ → application/ → adapters/ → main.ts (composition root).
+  frontend/    # React 19 + TanStack Query. Same hex shape. main.tsx wires everything.
+  e2e/         # Playwright against the docker-composed stack.
 docs/
-  adrs/        # Architecture Decision Records, prefixed by area: architecture | backend | frontend | tests
-  architecture.md
-  testing.md
+  architecture.md, testing.md, conventions.md, scripts.md
+  adrs/        # NNNN-{architecture|backend|frontend|tests}-slug.md
+.github/workflows/ci.yml   # PR + main pipeline; deploy job publishes the demo on main.
+.claude/commands/todolist/setup.md   # the /todolist:setup skill
 ```
+
+For any deeper navigation use the **Explore** subagent — it keeps reconnaissance out of the main context.
 
 ## Commands
 
 | Script | What it does |
 |---|---|
-| `npm install` | Install all workspace deps |
-| `npm run dev` | Run BE + FE dev servers in parallel |
-| `npm run build` | tsc + vite build per workspace |
-| `npm run test` | `node:test` (BE: 82 unit + integration) + Vitest (FE: 23) — green-bar gate |
-| `npm run test:integration` | BE integration suite only (`packages/backend/test/integration/**`) |
-| `npm run test:e2e` | Playwright E2E (10 specs against the docker-composed stack — see ADR-0015) |
-| `npm run test:e2e:ui` / `:report` / `:headed` | Playwright UI mode / HTML report / headed run (delegate to the e2e workspace) |
+| `npm install` | Install workspace deps; installs the lefthook pre-commit hook. |
+| `npm run dev` | Backend `:3000` + Vite `:5173`. Vite proxies `/api` to the backend. |
+| `npm run check` | Lint + typecheck + layers + tests + bundle budget. The green-bar gate. |
+| `npm run test` | Unit + integration (BE) + component (FE). |
+| `npm run test:e2e` | Playwright against the docker-composed stack. |
+| `npm run build` | `tsc` + `vite build` per workspace. |
+| `npm run build:demo` | FE bundle for GitHub Pages: ships MSW for in-browser mocks. |
+| `docker compose up --build` | Boot the production-shaped stack (FE on `:8081`, BE on `:3000`). |
 
-### Backend configuration
+Full reference: [`docs/scripts.md`](docs/scripts.md). Backend env contract: [`/.env.example`](.env.example) (`loadConfig` refuses to start if any required variable is missing).
 
-`packages/backend/src/index.ts` calls `loadConfig(process.env)` (see `src/config.ts`) and refuses to start if any required variable is missing. Required: `PORT`, `DATABASE_PATH`, `CORS_ORIGIN`. Optional: `MAX_BODY_BYTES`, `LOG_LEVEL`, `NODE_ENV`. See `.env.example` at the repo root for the canonical list. Defaults live there, not in code.
+## Rules enforced mechanically
 
-Composition root is `compose(deps)` in `packages/backend/src/main.ts` — pure dependency injection, takes every port. The entrypoint (`index.ts`) and the integration test helper both call it directly. SQLite wiring is encapsulated in `adapters/persistence/sqlite/wiring.ts:openWiredDatabase(path)` so both call sites share it.
-| `npm run lint` | `biome lint .` |
-| `npm run format` | `biome format --write .` |
-| `npm run typecheck` | `tsc --noEmit` per workspace |
-| `npm run check:layers` | `dependency-cruiser` enforces the hex-layer import rules |
-| `npm run check:bundle-size` | builds the FE and asserts JS ≤ 110 kB / CSS ≤ 8 kB gzipped |
-| `npm run check` | lint + typecheck + layers + test + bundle-size (the green-bar gate) |
-| `docker compose up --build` | Boot the full stack |
+- **Hex layers** (`npm run check:layers`): `domain/` imports nothing in-package; `application/` imports `domain/` only; `adapters/` import `application/` ports + `domain/` types; only `main.ts` wires concretes into ports. `__unsafe*` symbols are reachable from `domain/task/` only.
+- **Bundle budget** (`npm run check:bundle-size`): JS ≤ 110 kB / CSS ≤ 8 kB gzipped on the regular build.
+- **Format** (Biome via lefthook): two-space indent, single quotes, trailing commas, 100-char line. Auto-applied to staged files on commit.
 
-Stack ports: BE on `:3000`, FE on `:8081` (Docker) or `:5173` (Vite dev). 8080 is taken by Docker Desktop on the dev machine.
+## Rules to follow by hand
 
-The FE always talks to the API at the relative path `/api/...`. In dev, Vite's `server.proxy` rewrites it to `http://localhost:3000`; in Docker, nginx in the FE container rewrites it to `http://backend:3000`. No CORS in either supported environment. Override with `VITE_API_BASE_URL` (build-time) only for unusual deployments.
-
-## Layering rules (hexagonal)
-
-- `domain/` imports nothing from `application/` or `adapters/`.
-- `application/` imports `domain/` only. Defines ports (interfaces).
-- `adapters/` import `application/` ports + `domain/` types. Never the other way.
-- `main.ts` is the *only* file allowed to wire concrete adapters into ports.
-
-Layer rules are enforced mechanically by `npm run check:layers` (`dependency-cruiser`). The same config also forbids importing `__unsafe*` symbols outside `domain/task/`.
-
-## Testing
-
-Each test must justify its existence by failing if a real behaviour breaks.
-
-- **Unit** (`node:test`, BE): pure domain + use cases. No I/O. No port mocks at the application boundary except where simulating adapter behaviour the unit must react to.
-- **Integration** (`node:test`, BE): HTTP + persistence against real adapters (in-memory SQLite, in-process Hono). No port-level mocks.
-- **Component** (Vitest + Testing Library + happy-dom, FE): renders components with realistic props/contexts; asserts what the user perceives.
-- **E2E** (Playwright, `packages/e2e`): user journeys against the docker-composed stack with API-driven seeding/cleanup. Role-based selectors only; no `data-testid`. Serial workers (shared SQLite). See ADR-0015.
-
-If a test passes after deleting its target behaviour, the test is wrong. If a test mocks an adapter at the port boundary, it is the wrong layer.
-
-## Conventions
-
-- **No `any`.** No `// @ts-expect-error` without an ADR or an issue-link comment.
-- **Comments only when explaining a non-obvious *why*.** Code that needs comments to explain *what* should be rewritten.
-- **Prefer Node built-ins** (`node:test`, `node:sqlite`, `node --run`, `--experimental-strip-types`) over deps.
-- **Errors as typed values** at the domain layer (e.g. `Result<T, DomainError>`); throw only for programmer errors.
-- **Validate at boundaries, trust internally.** Zod parses request payloads and constructs value objects; once inside the domain, types are guaranteed.
-- **Two-space indent, single quotes, trailing commas, 100-char line.** Enforced by Biome.
+- **No `any`**, no `// @ts-expect-error` without a linked ADR or issue.
+- **Errors are typed values** at the domain layer. `throw` only for programmer errors. Validate at boundaries, trust internally.
 - **Imports use `.ts` extensions** (Node 24 strip mode + `rewriteRelativeImportExtensions`).
+- **Comments explain non-obvious *why*** — never *what*.
+- **Tests must fail when their target behaviour breaks.** If a test passes after you delete the behaviour, delete the test. Mocks belong at the boundary the layer owns: `fetch` for FE component tests, nothing for BE integration tests, no mocks at all in E2E.
 
-## Pointers
+Full conventions: [`docs/conventions.md`](docs/conventions.md). Per-layer test scope: [`docs/testing.md`](docs/testing.md).
 
-- Architecture (standalone, public): [`docs/architecture.md`](docs/architecture.md)
-- Testing (per-layer scope): [`docs/testing.md`](docs/testing.md)
-- ADRs: [`docs/adrs/`](docs/adrs/) — filenames are `NNNN-{architecture|backend|frontend|tests}-{slug}.md`
-- Pre-commit hook: [`lefthook.yml`](lefthook.yml) (ADR-0016)
+## Working with Claude in this repo
 
-## Token tips for future Claude sessions
-
-- Read this file first; **don't grep blindly**.
-- Use the **Explore** subagent for any reconnaissance beyond two reads — keeps the main context lean.
-- Touch only the layer the task owns; respect the hex boundaries.
-- Decisions go in ADRs, not in this file. This file stays an index.
+- Read CLAUDE.md, then the ADR that owns the area you're touching. Don't grep until the index has failed you.
+- Spawn the **Explore** subagent for anything past two file reads.
+- Touch only the layer the task owns; respect the hex boundaries enforced by `check:layers`.
+- Use the LSP tools (`goToDefinition`, `findReferences`, `documentSymbol`) before grep when navigating code.
+- Run `npm run check` before declaring a change done. E2E (`npm run test:e2e`) is a separate gate — run it when you touch HTTP boundaries, persistence, or UI flows.
+- New decisions go in a new ADR (`docs/adrs/NNNN-{area}-{slug}.md`), not in this file or in commit messages.

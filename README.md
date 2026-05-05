@@ -2,6 +2,8 @@
 
 A small task manager built as a 2026 TypeScript reference: production-ready, hexagonal, multi-layer tested, fully containerised.
 
+**Live demo:** <https://j-mori.github.io/todolist/> — the FE running against MSW-backed in-memory mocks. Refresh to reset.
+
 |  |  |
 |---|---|
 | **Stack** | Node 24 · Hono · `node:sqlite` + Kysely · React 19 · Vite · Tailwind v4 · TanStack Query v5 · Zod |
