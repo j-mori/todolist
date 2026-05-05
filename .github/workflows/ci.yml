@@ -17,6 +17,11 @@ permissions:
 
 env:
   NODE_VERSION: '24'
+  # Opt actions/* and docker/* in to the Node 24 runtime. Without this, the
+  # runner emits a deprecation warning for every action still defaulting to
+  # Node 20. The default flips on 2026-06-02; this line can be removed then.
+  # Ref: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
   quality:
